@@ -35,6 +35,7 @@ Register your team by adding one row to the table below and submitting the chang
 - Recommended IDE: IntelliJ IDEA
 - Runtime requirement inherited from the upstream project: Java 7 or later
 - Before implementing a feature, build and run the baseline game and analyze the relevant source code.
+- Chinese can fly contributors should follow the [team Git workflow](docs/Git_Workflow.md) before starting a task.
 
 To run the baseline in IntelliJ IDEA, mark `src` as **Sources Root** and `res` as **Resources Root**, then run `engine.Core`. The resource directory must be on the runtime classpath: the game loads `graphics`, `scores`, and `font.ttf` from its root. Installing the font in your operating system does not make it available to the game.
 
