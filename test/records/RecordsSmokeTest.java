@@ -172,15 +172,49 @@ private static void testFormatterOutput() {
 	}
 
 private static void testPersonalBests() throws Exception {
-    RecordsService service = new RecordsService(testDirectory("personal-bests").resolve("profile.properties"));
-    assertEquals(0, service.getHighestScore(), "empty score best");
-    service.completeRun(new RunRecord("a", -50, 4, 9000, 1));
-    service.completeRun(new RunRecord("b", -60, 7, 8000, 2));
-    service.completeRun(new RunRecord("c", -50, 7, 9000, 3));
-    assertEquals(-50, service.getHighestScore(), "score best and ties");
-    assertEquals(7, service.getMostEnemiesDefeated(), "enemy best and ties");
-    assertEquals(9000L, service.getLongestSurvivalMillis(), "duration best and ties");
-    service.close();
+    Path profile = testDirectory("personal-bests").resolve("profile.properties");
+    RecordsService service = new RecordsService(profile);
+    try {
+        assertEquals(0, service.getHighestScore(), "empty score best");
+        PersonalBestComparison first = service.completeRunWithComparison(
+                new RunRecord("a", -50, 4, 9000, 1)).orElseThrow();
+        assertEquals(-50, first.score(), "first finish score");
+        assertTrue(first.previousBest().isEmpty(), "first finish has no prior best");
+        assertTrue(first.differenceFromPreviousBest().isEmpty(), "first finish has no gap");
+
+        PersonalBestComparison below = service.completeRunWithComparison(
+                new RunRecord("b", -60, 7, 8000, 2)).orElseThrow();
+        assertEquals(-50, below.previousBest().orElseThrow(), "lower score uses the prior best");
+        assertEquals(-10L, below.differenceFromPreviousBest().orElseThrow(), "score below best");
+        PersonalBestComparison tied = service.completeRunWithComparison(
+                new RunRecord("c", -50, 7, 9000, 3)).orElseThrow();
+        assertEquals(0L, tied.differenceFromPreviousBest().orElseThrow(), "score ties best");
+        assertEquals(-50, service.getHighestScore(), "score best and ties");
+        assertEquals(7, service.getMostEnemiesDefeated(), "enemy best and ties");
+        assertEquals(9000L, service.getLongestSurvivalMillis(), "duration best and ties");
+
+        RunRecord record = new RunRecord("d", Integer.MAX_VALUE, 0, 0, 4);
+        PersonalBestComparison newBest = service.completeRunWithComparison(record).orElseThrow();
+        assertEquals(-50, newBest.previousBest().orElseThrow(), "record uses pre-insert best");
+        assertEquals((long) Integer.MAX_VALUE + 50,
+                newBest.differenceFromPreviousBest().orElseThrow(), "large score gain");
+        assertTrue(service.completeRunWithComparison(record).isEmpty(),
+                "duplicate run has no completion comparison");
+    } finally {
+        service.close();
+    }
+
+    RecordsService reopened = new RecordsService(profile);
+    try {
+        PersonalBestComparison afterReload = reopened.completeRunWithComparison(
+                new RunRecord("e", Integer.MAX_VALUE - 25, 0, 0, 5)).orElseThrow();
+        assertEquals(Integer.MAX_VALUE, afterReload.previousBest().orElseThrow(),
+                "settlement uses persisted best after restart");
+        assertEquals(-25L, afterReload.differenceFromPreviousBest().orElseThrow(),
+                "score gap after restart");
+    } finally {
+        reopened.close();
+    }
 }
 private static void testRankingOrderAndLimit() {
 		try {

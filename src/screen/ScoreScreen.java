@@ -2,8 +2,10 @@ package screen;
 
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import campaign.CampaignStageData;
 import engine.Cooldown;
@@ -13,8 +15,8 @@ import engine.GameplayConfig;
 import engine.Score;
 import audio.AudioManager;
 import records.Achievement;
+import records.PersonalBestComparison;
 import records.RecordsService;
-import java.util.ArrayList;
 
 /**
  * Implements the score screen.
@@ -44,6 +46,8 @@ public class ScoreScreen extends Screen {
 	private boolean infiniteMode;
     /** Text describing the mode played: difficulty (campaign) or infinite. */
     private String modeLabel;
+    /** Comparison with the player's best completed run before this result. */
+    private final String personalBestLabel;
 	/** Current score. */
 	private int score;
 	/** Player lives left. */
@@ -88,8 +92,14 @@ public class ScoreScreen extends Screen {
     }
     public ScoreScreen(final int width, final int height, final int fps,
             final GameState gameState, final boolean infiniteMode, final List<Achievement> unlocks) {
+        this(width, height, fps, gameState, infiniteMode, unlocks, Optional.empty());
+    }
+    public ScoreScreen(final int width, final int height, final int fps,
+            final GameState gameState, final boolean infiniteMode, final List<Achievement> unlocks,
+            final Optional<PersonalBestComparison> comparison) {
         super(width,height,fps);
         this.runUnlocks = new ArrayList<Achievement>(unlocks);
+        this.personalBestLabel = comparison.map(ScoreScreen::formatPersonalBest).orElse(null);
 
 		this.infiniteMode = infiniteMode;
         this.modeLabel = infiniteMode ? "infinite mode"
@@ -239,6 +249,20 @@ public class ScoreScreen extends Screen {
             default:                   return "Normal";
         }
     }
+
+    private static String formatPersonalBest(final PersonalBestComparison comparison) {
+        if (comparison.previousBest().isEmpty())
+            return "First personal best!";
+
+        int previousBest = comparison.previousBest().getAsInt();
+        long difference = comparison.differenceFromPreviousBest().getAsLong();
+        if (difference > 0)
+            return "New best +" + difference + " vs " + previousBest;
+        if (difference == 0)
+            return "Tied best " + previousBest + " (0 pts)";
+        return "Best " + previousBest + " (" + difference + " pts)";
+    }
+
 	/**
 	 * Draws the elements associated with the screen.
 	 */
@@ -250,7 +274,7 @@ public class ScoreScreen extends Screen {
                     this.shipsDestroyed,accuracy,this.isNewRecord,this.name,this.nameCharSelected,
                     this.runUnlocks,this.inputDelay.checkFinished(),
                     this.stageFailed && !this.infiniteMode ? this.level : 0, this.gameCleared,
-                    this.modeLabel);
+                    this.modeLabel, this.personalBestLabel);
             drawManager.completeDrawing(this); return;
         }
 
@@ -259,7 +283,7 @@ public class ScoreScreen extends Screen {
 		if (this.stageFailed && !this.infiniteMode)
 			drawManager.drawStageFailed(this, this.level, this.isNewRecord);
         drawManager.drawResults(this, this.score, this.livesRemaining,
-                this.shipsDestroyed, accuracy, this.isNewRecord);
+                this.shipsDestroyed, accuracy, this.isNewRecord, this.personalBestLabel);
         drawManager.drawModeLabel(this, this.modeLabel, this.isNewRecord);
 
 		if (this.isNewRecord)
