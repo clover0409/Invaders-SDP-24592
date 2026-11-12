@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -93,13 +95,20 @@ public final class RecordsService {
             unlock(Achievement.SIXTY_SECONDS, System.currentTimeMillis());
     }
 
-    public synchronized boolean completeRun(final RunRecord record) {
+    public boolean completeRun(final RunRecord record) {
+        return completeRunWithComparison(record).isPresent();
+    }
+
+    /**
+     * Records a completed run and compares it with the prior personal best
+     * under the same lock. Returns empty if the completion was not accepted.
+     */
+    public synchronized Optional<PersonalBestComparison> completeRunWithComparison(
+            final RunRecord record) {
         if (this.closed || record == null || this.records.containsKey(record.getRunId()))
-            return false;
+            return Optional.empty();
         boolean firstRun = this.records.isEmpty();
-        int previousBest = Integer.MIN_VALUE;
-        for (RunRecord prior : this.records.values())
-            previousBest = Math.max(previousBest, prior.getScore());
+        int previousBest = getHighestScore();
         // Every save containing a completion achievement also contains its run.
         this.records.put(record.getRunId(), record);
         if (record.getEnemiesDefeated() >= 1) unlock(Achievement.FIRST_ENEMY, record.getCompletionTimeMillis());
@@ -112,7 +121,8 @@ public final class RecordsService {
         if (record.getRunId().equals(this.activeRunId))
             this.activeRunId = null;
         enqueueSave();
-        return true;
+        return Optional.of(new PersonalBestComparison(record.getScore(),
+                firstRun ? OptionalInt.empty() : OptionalInt.of(previousBest)));
     }
 
     private void unlock(final Achievement achievement, final long timeMillis) {
