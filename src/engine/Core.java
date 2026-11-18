@@ -30,6 +30,7 @@ import screen.AudioControlScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
 import screen.InfiniteGameScreen;
+import screen.SurvivalResultScreen;
 import screen.ScoreScreen;
 import screen.Screen;
 import screen.TitleScreen;
@@ -297,6 +298,20 @@ public final class Core {
 					currentScreen = new GameplaySettingsScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					break;
+				case GameModeScreen.SURVIVAL_MODE: {
+					InfiniteGameScreen challenge = InfiniteGameScreen.forSurvival(width, height, FPS);
+					currentScreen = challenge;
+					frame.setScreen(challenge);
+					if (challenge.isAbandoned()) {
+						returnCode = 14;
+						break;
+					}
+					currentScreen = new SurvivalResultScreen(width, height, FPS,
+							challenge.getGameState().getScore(),
+							challenge.getSurvivalElapsedMillis(), challenge.hasSurvived());
+					returnCode = frame.setScreen(currentScreen);
+					break;
+				}
 				case 8:
 					// Infinite mode & score.
 					RunSession infiniteSession = new RunSession(UUID.randomUUID().toString());
