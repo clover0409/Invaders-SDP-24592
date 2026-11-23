@@ -7,6 +7,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import javax.swing.JOptionPane;
@@ -20,6 +21,7 @@ import currency.PlayerAssets;
 import currency.PlayerAssetsState;
 import hud.AssetHudSnapshot;
 import java.util.UUID;
+import records.PersonalBestComparison;
 import records.RunSession;
 import records.RunRecord;
 import records.RunRecordFormatter;
@@ -224,7 +226,9 @@ public final class Core {
 
 					RunRecord completedRun = runSession.finish(gameState.getScore(),
 							gameState.getShipsDestroyed(), System.currentTimeMillis());
-					if (recordsService.completeRun(completedRun))
+					Optional<PersonalBestComparison> campaignComparison =
+							recordsService.completeRunWithComparison(completedRun);
+					if (campaignComparison.isPresent())
 						LOGGER.info("Completed run recorded:\n" + RunRecordFormatter.format(completedRun));
 
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
@@ -234,7 +238,7 @@ public final class Core {
 							+ gameState.getBulletsShot() + " bullets shot and "
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							recordsService.getCurrentRunUnlocks());
+							false, recordsService.getCurrentRunUnlocks(), campaignComparison);
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;
@@ -311,10 +315,11 @@ public final class Core {
 					resolveRewards(false);
 
 					gameState = ((InfiniteGameScreen) currentScreen).getGameState();
+					Optional<PersonalBestComparison> infiniteComparison = Optional.empty();
 					if (!((InfiniteGameScreen) currentScreen).isAbandoned()) {
 						RunRecord infiniteRecord = infiniteSession.finish(gameState.getScore(),
 								gameState.getShipsDestroyed(), System.currentTimeMillis());
-						recordsService.completeRun(infiniteRecord);
+						infiniteComparison = recordsService.completeRunWithComparison(infiniteRecord);
 					}
 
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
@@ -324,7 +329,7 @@ public final class Core {
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					// Infinite mode score screen, Space plays infinite mode again.
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							true, recordsService.getCurrentRunUnlocks());
+							true, recordsService.getCurrentRunUnlocks(), infiniteComparison);
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;

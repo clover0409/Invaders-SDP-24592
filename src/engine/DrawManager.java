@@ -71,21 +71,23 @@ public final class DrawManager {
      *                    Failed stage number, or zero when no stage failed.
      * @param achievementCount
      *                    Number of newly unlocked achievements.
+     * @param resultRows
+     *                    Number of result rows, including optional labels.
      * @return Baseline for the game-over title.
      */
     private int getAchievementResultsTitleY(final Screen screen,
             final boolean isNewRecord, final int failedStage,
-            final int achievementCount) {
+            final int achievementCount, final int resultRows) {
         int spacing = fontRegularMetrics.getHeight();
         int lastLineOffset = 0;
 
         if (failedStage > 0)
             lastLineOffset += spacing;
 
-        // Gap before the four result rows, including the increment after the
+        // Gap before the result rows, including the increment after the
         // last row used by drawAchievementResults.
         lastLineOffset += spacing * 2;
-        lastLineOffset += spacing * 4;
+        lastLineOffset += spacing * resultRows;
 
         if (isNewRecord) {
             // Gap before the three name-input rows and the increment after
@@ -726,6 +728,12 @@ public final class DrawManager {
     public void drawResults(final Screen screen, final int score,
             final int livesRemaining, final int shipsDestroyed,
             final float accuracy, final boolean isNewRecord) {
+        drawResults(screen, score, livesRemaining, shipsDestroyed, accuracy, isNewRecord, null);
+    }
+
+    public void drawResults(final Screen screen, final int score,
+            final int livesRemaining, final int shipsDestroyed,
+            final float accuracy, final boolean isNewRecord, final String personalBestLabel) {
         String scoreString = String.format("score %04d", score);
         String livesRemainingString = "lives remaining " + livesRemaining;
         String shipsDestroyedString = "enemies destroyed " + shipsDestroyed;
@@ -744,6 +752,9 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.WHITE);
 
         drawCenteredRegularString(screen, scoreString, resultsY);
+        if (personalBestLabel != null)
+            drawCenteredRegularString(screen, personalBestLabel,
+                    resultsY + fontRegularMetrics.getHeight());
 
         drawCenteredRegularString(
                 screen,
@@ -1670,9 +1681,20 @@ public final class DrawManager {
             final boolean isNewRecord, final char[] name, final int selected,
             final List<Achievement> achievements, final boolean acceptsInput,
             final int failedStage, final boolean gameCleared, final String modeLabel) {
+        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, name, selected,
+                achievements, acceptsInput, failedStage, gameCleared, modeLabel, null);
+    }
+
+    public void drawAchievementResults(final Screen screen, final int score,
+            final int lives, final int enemies, final float accuracy,
+            final boolean isNewRecord, final char[] name, final int selected,
+            final List<Achievement> achievements, final boolean acceptsInput,
+            final int failedStage, final boolean gameCleared, final String modeLabel,
+            final String personalBestLabel) {
         int spacing = fontRegularMetrics.getHeight();
+        int resultRows = 4 + (modeLabel == null ? 0 : 1) + (personalBestLabel == null ? 0 : 1);
         int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
-                achievements.size());
+                achievements.size(), resultRows);
         backBufferGraphics.setColor(Color.GREEN);
         drawCenteredBigString(screen, gameCleared ? "Game Cleared!" : "Game Over", y);
         if (failedStage > 0) {
@@ -1682,13 +1704,21 @@ public final class DrawManager {
         }
         y += spacing * 2;
         backBufferGraphics.setColor(Color.WHITE);
-        String[] results = { "Score " + score, "Lives remaining " + lives,
+        drawCenteredRegularString(screen, "Score " + score, y);
+        y += spacing;
+        if (personalBestLabel != null) {
+            drawCenteredRegularString(screen, personalBestLabel, y);
+            y += spacing;
+        }
+        String[] results = { "Lives remaining " + lives,
                 "Enemies destroyed " + enemies,
                 String.format("Accuracy %.2f%%", accuracy * 100) };
-        if (modeLabel != null)
-            results = new String[] { results[0], results[1], results[2], results[3], modeLabel };
         for (String result : results) {
             drawCenteredRegularString(screen, result, y);
+            y += spacing;
+        }
+        if (modeLabel != null) {
+            drawCenteredRegularString(screen, modeLabel, y);
             y += spacing;
         }
         if (isNewRecord) {
