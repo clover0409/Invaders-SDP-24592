@@ -7,8 +7,9 @@ import engine.Core;
 
 public class GameModeScreen extends Screen { // Implementation of the game mode selection screen.
 
+    public static final int SURVIVAL_MODE = 15;
     private static final int SELECTION_TIME = 200;
-    private static final int NUM_CHOICES = 3; // Number of game mode choices (0: Infinite, 1: Campaign, 2: Back)
+    private static final int NUM_CHOICES = 4;
 
     private int selected;
     private Cooldown selectionCooldown;
@@ -48,13 +49,12 @@ public class GameModeScreen extends Screen { // Implementation of the game mode 
             }
 
             if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-                if (this.selected == 2) {
-                    this.returnCode = 1;
-                } else if (this.selected == 0) {
-                    this.returnCode = 8;
-                } else if (this.selected == 1) {
-                    this.returnCode = 2;
-                }
+                this.returnCode = switch (this.selected) {
+                    case 0 -> 8;
+                    case 1 -> 2;
+                    case 2 -> SURVIVAL_MODE;
+                    default -> 1;
+                };
                 this.isRunning = false;
                 if(this.returnCode==1)
                     AudioManager.playSFX("audio/sfx/menu_back.wav");

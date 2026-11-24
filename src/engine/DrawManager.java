@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -386,6 +387,12 @@ public final class DrawManager {
         int scoreX = screen.getWidth() - 60;
         drawIcon(Icon.SCORE, scoreX - Icon.SCORE.getWidth() * 2 - 6, 12, 2);
         backBufferGraphics.drawString(scoreString, scoreX, 25);
+    }
+
+    /** Draws the survival countdown in the center of the gameplay HUD. */
+    public void drawSurvivalTimer(final Screen screen, final int remainingSeconds) {
+        backBufferGraphics.setColor(remainingSeconds <= 10 ? Color.YELLOW : Color.WHITE);
+        drawCenteredRegularString(screen, "Time " + remainingSeconds + "s", 25);
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */
@@ -2118,7 +2125,7 @@ public final class DrawManager {
     }
 
     public void drawGameModeMenu(final Screen screen, final int option) {
-        String[] labels = { "Endless Mode", "Campaign Mode", "Back" };
+        String[] labels = { "Endless Mode", "Campaign Mode", "60-Second Survival", "Back" };
 
         backBufferGraphics.setFont(fontBig);
         backBufferGraphics.setColor(Color.GREEN);
@@ -2130,5 +2137,25 @@ public final class DrawManager {
             drawCenteredRegularString(screen, labels[i],
                     screen.getHeight() / 3 + 60 + i * 40);
         }
+    }
+
+    /** Draws the survival challenge's result and available actions. */
+    public void drawSurvivalResult(final Screen screen, final int score,
+            final long survivedMillis, final boolean survived, final boolean acceptsInput) {
+        int height = screen.getHeight();
+        int spacing = fontRegularMetrics.getHeight();
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "60-Second Survival", height / 4);
+
+        backBufferGraphics.setColor(survived ? Color.GREEN : Color.RED);
+        drawCenteredBigString(screen, survived ? "Survived!" : "Game Over", height / 3);
+
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "Score " + score, height / 2);
+        drawCenteredRegularString(screen, String.format(Locale.ROOT,
+                "Time %.3f / 60 s", survivedMillis / 1000.0), height / 2 + spacing * 2);
+
+        backBufferGraphics.setColor(acceptsInput ? Color.GREEN : Color.GRAY);
+        drawCenteredRegularString(screen, "Space: retry   Esc: mode menu", height - spacing * 2);
     }
 }
