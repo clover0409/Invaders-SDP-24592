@@ -8,11 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.io.TempDir;
+
+import records.Achievement;
+import records.RecordsService;
 
 import engine.Core;
 import entity.Bullet;
@@ -21,6 +28,18 @@ import entity.Ship;
 
 class SurvivalChallengeTest {
     private final AtomicLong clock = new AtomicLong();
+    @TempDir Path directory;
+    private RecordsService records;
+
+    @BeforeEach
+    void openRecords() {
+        records = new RecordsService(directory.resolve("profile.properties"));
+    }
+
+    @AfterEach
+    void closeRecords() {
+        records.close();
+    }
 
     @Test
     void startsAfterCountdownAndClearsAtSixtySeconds() throws Exception {
@@ -37,6 +56,7 @@ class SurvivalChallengeTest {
         assertFalse(challenge.hasSurvived());
         assertTrue(challenge.isRunning);
         assertEquals(59_999, challenge.getSurvivalElapsedMillis());
+        assertNull(records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE));
 
         queueHit(challenge);
         advance(1);
@@ -46,6 +66,27 @@ class SurvivalChallengeTest {
         assertEquals(60_000, challenge.getSurvivalElapsedMillis());
         assertEquals(1, challenge.getGameState().getLivesRemaining(),
                 "A collision after the deadline must not cancel a clear");
+        assertTrue(challenge.isSurvivalAchievementUnlocked());
+        Long unlocked = records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE);
+        assertTrue(unlocked != null);
+        assertEquals(0, records.getRecordCount());
+        for (Achievement achievement : Achievement.values()) {
+            if (achievement != Achievement.SURVIVAL_CHALLENGE)
+                assertNull(records.getUnlockTime(achievement));
+        }
+
+        InfiniteGameScreen retry = newChallenge();
+        startGameplay(retry);
+        advance(60_000);
+        retry.update();
+        assertTrue(retry.hasSurvived());
+        assertFalse(retry.isSurvivalAchievementUnlocked());
+        assertEquals(unlocked, records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE));
+
+        records.close();
+        records = new RecordsService(directory.resolve("profile.properties"));
+        assertEquals(unlocked, records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE));
+        assertEquals(0, records.getRecordCount());
     }
 
     @Test
@@ -61,6 +102,8 @@ class SurvivalChallengeTest {
         challenge.update();
         assertEquals(29_500, challenge.getSurvivalElapsedMillis());
         assertFalse(challenge.hasSurvived());
+        assertFalse(challenge.isSurvivalAchievementUnlocked());
+        assertNull(records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE));
     }
 
     @Test
@@ -69,6 +112,7 @@ class SurvivalChallengeTest {
         press(challenge, KeyEvent.VK_ESCAPE);
         assertTrue(challenge.isAbandoned());
         assertFalse(challenge.isRunning);
+        assertNull(records.getUnlockTime(Achievement.SURVIVAL_CHALLENGE));
 
         SurvivalResultScreen result = new SurvivalResultScreen(448, 520, 60, 0, 0, false);
         result.inputDelay = Core.getCooldown(0);
@@ -93,7 +137,7 @@ class SurvivalChallengeTest {
     }
 
     private InfiniteGameScreen newChallenge() {
-        InfiniteGameScreen challenge = InfiniteGameScreen.forSurvival(448, 520, 60, clock::get);
+        InfiniteGameScreen challenge = InfiniteGameScreen.forSurvival(448, 520, 60, clock::get, records);
         challenge.initialize();
         challenge.inputDelay = Core.getCooldown(Integer.MAX_VALUE);
         challenge.inputDelay.reset();

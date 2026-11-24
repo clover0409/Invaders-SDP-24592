@@ -1758,7 +1758,7 @@ public final class DrawManager {
                 drawCenteredRegularString(screen, "Unlocked: "
                         + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(unlocked)),
                         y + fontRegularMetrics.getHeight() * 2);
-            y += fontRegularMetrics.getHeight() * 3 + 4;
+            y += fontRegularMetrics.getHeight() * 3;
         }
     }
 
@@ -1990,7 +1990,7 @@ public final class DrawManager {
                 }
             }
         } else {
-            drawAchievementList(screen, service, y);
+            drawAchievementList(screen, service, y - fontRegularMetrics.getHeight());
         }
         backBufferGraphics.setColor(Color.GRAY);
         String status = service.getSaveError();
@@ -2137,6 +2137,14 @@ public final class DrawManager {
             drawCenteredRegularString(screen, labels[i],
                     screen.getHeight() / 3 + 60 + i * 40);
         }
+    }
+
+    /** Shows the first challenge clear on the result screen. */
+    public void drawSurvivalAchievement(final Screen screen) {
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredRegularString(screen, "Achievement unlocked:", screen.getHeight() * 3 / 4);
+        drawCenteredRegularString(screen, Achievement.SURVIVAL_CHALLENGE.getName(),
+                screen.getHeight() * 3 / 4 + fontRegularMetrics.getHeight());
     }
 
     /** Draws the survival challenge's result and available actions. */

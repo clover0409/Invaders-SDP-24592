@@ -9,15 +9,25 @@ public final class SurvivalResultScreen extends Screen {
     private final int score;
     private final long survivedMillis;
     private final boolean survived;
+    private final boolean achievementUnlocked;
     private boolean spaceWasDown;
     private boolean escapeWasDown;
 
     public SurvivalResultScreen(final int width, final int height, final int fps,
             final int score, final long survivedMillis, final boolean survived) {
+        this(width, height, fps, score, survivedMillis, survived, false);
+    }
+
+    public SurvivalResultScreen(final int width, final int height, final int fps,
+            final int score, final long survivedMillis, final boolean survived,
+            final boolean achievementUnlocked) {
         super(width, height, fps);
         this.score = score;
         this.survivedMillis = survivedMillis;
         this.survived = survived;
+        this.achievementUnlocked = survived && achievementUnlocked;
+        if (this.achievementUnlocked)
+            AudioManager.playSFX("audio/sfx/achievement_unlock.wav");
         this.spaceWasDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);
         this.escapeWasDown = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
         AudioManager.playBGM(survived
@@ -37,6 +47,8 @@ public final class SurvivalResultScreen extends Screen {
         drawManager.initDrawing(this);
         drawManager.drawSurvivalResult(this, this.score, this.survivedMillis,
                 this.survived, acceptsInput);
+        if (this.achievementUnlocked)
+            drawManager.drawSurvivalAchievement(this);
         drawManager.completeDrawing(this);
 
         boolean spaceDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);

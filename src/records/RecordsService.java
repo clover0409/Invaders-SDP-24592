@@ -125,13 +125,27 @@ public final class RecordsService {
                 firstRun ? OptionalInt.empty() : OptionalInt.of(previousBest)));
     }
 
+    /** Saves a challenge victory without adding a regular run or gameplay notification. */
+    public synchronized boolean completeSurvivalChallenge() {
+        return !this.closed && unlock(Achievement.SURVIVAL_CHALLENGE,
+                System.currentTimeMillis(), false);
+    }
+
     private void unlock(final Achievement achievement, final long timeMillis) {
+        unlock(achievement, timeMillis, true);
+    }
+
+    private boolean unlock(final Achievement achievement, final long timeMillis,
+            final boolean duringRun) {
         if (this.unlockTimes.containsKey(achievement.getId()))
-            return;
+            return false;
         this.unlockTimes.put(achievement.getId(), Long.valueOf(timeMillis));
-        this.currentRunUnlocks.add(achievement);
-        this.notifications.addLast(achievement);
+        if (duringRun) {
+            this.currentRunUnlocks.add(achievement);
+            this.notifications.addLast(achievement);
+        }
         enqueueSave();
+        return true;
     }
 
 

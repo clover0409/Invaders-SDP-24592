@@ -9,6 +9,25 @@ The local implementation covers team requirements 3.1–3.7. Its initial integra
 - When an achievement unlocks during gameplay, a notification appears at the top of the HUD for approximately three seconds. The results screen lists all achievements unlocked during that run.
 - The profile is stored at `.space-invaders/records-achievements.properties` under the user's home directory. Run records and achievement unlock times are saved together; personal bests are recalculated from the complete record history.
 
+## 60-Second Survival Challenge Achievement
+
+**Survival Champion** (`survival_challenge`) unlocks on the first victory in
+the 60-Second Survival mode introduced by PR #15. The opening countdown does
+not count. Death before the deadline or leaving with Escape does not unlock
+it. This is separate from **Still Flying**, which tracks 60 active seconds in
+a regular run.
+
+The first victory plays the achievement sound and displays the unlock on the
+challenge result screen. Later victories do not repeat the unlock. Its unlock
+time is saved in the existing local profile and appears in Records &
+Achievements after restarting. Challenge scores remain outside ordinary run
+history, personal bests, rankings, and currency rewards.
+
+Regression coverage is in `SurvivalChallengeTest` and `SurvivalAchievementTest`:
+the 59,999/60,000 ms boundary, a collision at the winning deadline, a fatal
+hit, leaving during the countdown, retry, persistence, duplicate victories,
+and separation from regular-run achievements and notifications.
+
 ## Local Data Protection
 
 The profile uses a versioned UTF-8 Properties file. Writes run on a separate thread: the system writes a temporary file, reads it back for validation, preserves the previous valid backup, and replaces the primary profile. When loading a corrupt profile, it preserves a copy of the corrupt data and attempts to restore a backup. If neither the primary profile nor its backup can be read successfully, the program reports the problem and disables automatic writes so the original data is not overwritten with an empty profile.
