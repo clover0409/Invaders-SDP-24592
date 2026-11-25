@@ -46,16 +46,24 @@ public final class ProfileStore {
             }
         }
         if (Files.exists(this.backup)) {
+            ProfileSnapshot recovered;
             try {
-                ProfileSnapshot recovered = read(this.backup);
-                write(recovered);
-                this.loadWarning = "Profile was restored from backup; newer progress may be unavailable.";
-                return recovered;
+                recovered = read(this.backup);
             } catch (IOException backupError) {
                 if (primaryError != null)
                     backupError.addSuppressed(primaryError);
                 throw backupError;
             }
+            try {
+                write(recovered);
+                this.loadWarning = "Profile was restored from backup; newer progress may be unavailable.";
+            } catch (IOException rewriteError) {
+                // The backup itself is still valid and untouched, so keep using
+                // it instead of discarding readable progress for this session.
+                this.loadWarning = "Profile was restored from backup but could not be re-saved; "
+                        + "newer progress may be unavailable: " + rewriteError.getMessage();
+            }
+            return recovered;
         }
         throw primaryError == null ? new IOException("Profile is unavailable.")
                 : primaryError;
