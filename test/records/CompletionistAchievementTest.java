@@ -26,9 +26,12 @@ class CompletionistAchievementTest {
         Long completionTime;
         try {
             assertNull(service.getUnlockTime(Achievement.ALL_ACHIEVEMENTS));
+            assertEquals(5, service.getCompletionistProgress());
             List<Achievement> challengeUnlocks = earn(service, last);
             completionTime = service.getUnlockTime(Achievement.ALL_ACHIEVEMENTS);
             assertNotNull(completionTime);
+            assertEquals(6, service.getCompletionistProgress());
+            assertEquals(6, RecordsService.getCompletionistTarget());
             assertEquals(service.getUnlockTime(last), completionTime);
             if (last == Achievement.SURVIVAL_CHALLENGE) {
                 assertEquals(List.of(last, Achievement.ALL_ACHIEVEMENTS), challengeUnlocks);
@@ -49,6 +52,7 @@ class CompletionistAchievementTest {
         RecordsService reloaded = new RecordsService(file);
         try {
             assertEquals(completionTime, reloaded.getUnlockTime(Achievement.ALL_ACHIEVEMENTS));
+            assertEquals(6, reloaded.getCompletionistProgress());
             assertNull(reloaded.pollNotification());
         } finally {
             reloaded.close();
@@ -85,6 +89,7 @@ class CompletionistAchievementTest {
         RecordsService service = new RecordsService(directory.resolve("empty.properties"));
         try {
             assertNull(service.getUnlockTime(Achievement.ALL_ACHIEVEMENTS));
+            assertEquals(0, service.getCompletionistProgress());
             assertNull(service.pollNotification());
         } finally {
             service.close();

@@ -33,7 +33,9 @@ and separation from regular-run achievements and notifications.
 **Completionist** (`all_achievements`) unlocks once all six other achievements
 have been earned in the same local profile, including **Survival Champion**.
 It does not require itself. The final prerequisite may be earned in a regular
-run or the survival challenge. A regular run queues the normal HUD notice and
+run or the survival challenge. Its entry displays **Progress: X/6**, counting
+only the six prerequisites, and keeps the unlock date visible after completion.
+A regular run queues the normal HUD notice and
 includes Completionist in its results; a challenge victory lists both new
 achievements on its result screen without adding regular-run notifications.
 

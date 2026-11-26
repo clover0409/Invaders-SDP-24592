@@ -1769,11 +1769,18 @@ public final class DrawManager {
                     y);
             backBufferGraphics.setColor(Color.GRAY);
             drawCenteredRegularString(screen, achievement.getCondition(), y + fontRegularMetrics.getHeight());
+            int detailY = y + fontRegularMetrics.getHeight() * 2;
+            if (achievement == Achievement.ALL_ACHIEVEMENTS) {
+                drawCenteredRegularString(screen, "Progress: " + service.getCompletionistProgress()
+                        + "/" + RecordsService.getCompletionistTarget(), detailY);
+                detailY += fontRegularMetrics.getHeight();
+            }
             if (unlocked != null)
                 drawCenteredRegularString(screen, "Unlocked: "
                         + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(unlocked)),
-                        y + fontRegularMetrics.getHeight() * 2);
-            y += fontRegularMetrics.getHeight() * 3 + 4;
+                        detailY);
+            y += fontRegularMetrics.getHeight()
+                    * (achievement == Achievement.ALL_ACHIEVEMENTS ? 4 : 3) + 4;
         }
     }
 

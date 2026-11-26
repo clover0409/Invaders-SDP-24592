@@ -234,6 +234,21 @@ public final class RecordsService {
         return this.unlockTimes.get(achievement.getId());
     }
 
+    /** Counts Completionist prerequisites, excluding the meta-achievement itself. */
+    public synchronized int getCompletionistProgress() {
+        int earned = 0;
+        for (Achievement achievement : Achievement.values()) {
+            if (achievement != Achievement.ALL_ACHIEVEMENTS
+                    && this.unlockTimes.containsKey(achievement.getId()))
+                earned++;
+        }
+        return earned;
+    }
+
+    public static int getCompletionistTarget() {
+        return Achievement.values().length - 1;
+    }
+
     public synchronized int getRecordCount() { return this.records.size(); }
     public synchronized boolean isWritesBlocked() { return this.writesBlocked; }
     public String getSaveError() { return this.saveError; }
