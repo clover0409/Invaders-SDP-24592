@@ -17,6 +17,8 @@ import java.util.UUID;
 
 /** Versioned UTF-8 profile storage with validation, backup, and atomic replace. */
 public final class ProfileStore {
+    /** Stored separately so versions without this title can still read standard achievements. */
+    private static final String PACIFIST_TITLE_TIME = "title.survival_pacifist.unlocked";
     private static final String VERSION = "1";
     private final Path file;
     private final Path backup;
@@ -80,14 +82,17 @@ public final class ProfileStore {
             properties.setProperty(prefix + "duration", Long.toString(record.getActiveDurationMillis()));
             properties.setProperty(prefix + "completed", Long.toString(record.getCompletionTimeMillis()));
         }
-        properties.setProperty("achievement.count",
-                Integer.toString(snapshot.getUnlockTimes().size()));
         index = 0;
         for (Map.Entry<String, Long> entry : snapshot.getUnlockTimes().entrySet()) {
+            if (Achievement.SURVIVAL_PACIFIST.getId().equals(entry.getKey())) {
+                properties.setProperty(PACIFIST_TITLE_TIME, Long.toString(entry.getValue()));
+                continue;
+            }
             String prefix = "achievement." + index++ + ".";
             properties.setProperty(prefix + "id", entry.getKey());
             properties.setProperty(prefix + "unlocked", Long.toString(entry.getValue()));
         }
+        properties.setProperty("achievement.count", Integer.toString(index));
 
         Path temporary = Files.createTempFile(parent, "profile-", ".tmp");
         boolean moved = false;
@@ -167,24 +172,32 @@ public final class ProfileStore {
             }
         }
         int achievementCount = count(properties, "achievement.count",
-                Achievement.values().length);
+                Achievement.values().length - 1);
         Map<String, Long> unlocked = new LinkedHashMap<String, Long>();
         for (int i = 0; i < achievementCount; i++) {
             String prefix = "achievement." + i + ".";
             String id = required(properties, prefix + "id");
-            if (Achievement.fromId(id) == null || unlocked.containsKey(id))
+            Achievement achievement = Achievement.fromId(id);
+            if (achievement == null || achievement == Achievement.SURVIVAL_PACIFIST
+                    || unlocked.containsKey(id))
                 throw new IOException("Unknown or duplicate achievement ID.");
-            long time;
-            try {
-                time = Long.parseLong(required(properties, prefix + "unlocked"));
-            } catch (NumberFormatException exception) {
-                throw new IOException("Invalid achievement time.", exception);
-            }
+            unlocked.put(id, parseUnlockTime(required(properties, prefix + "unlocked")));
+        }
+        String titleTime = properties.getProperty(PACIFIST_TITLE_TIME);
+        if (titleTime != null)
+            unlocked.put(Achievement.SURVIVAL_PACIFIST.getId(), parseUnlockTime(titleTime));
+        return new ProfileSnapshot(records, unlocked);
+    }
+
+    private static long parseUnlockTime(final String value) throws IOException {
+        try {
+            long time = Long.parseLong(value);
             if (time <= 0)
                 throw new IOException("Invalid achievement time.");
-            unlocked.put(id, Long.valueOf(time));
+            return time;
+        } catch (NumberFormatException exception) {
+            throw new IOException("Invalid achievement time.", exception);
         }
-        return new ProfileSnapshot(records, unlocked);
     }
 
     private static int count(final Properties properties, final String key,

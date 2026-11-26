@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -386,6 +387,12 @@ public final class DrawManager {
         int scoreX = screen.getWidth() - 60;
         drawIcon(Icon.SCORE, scoreX - Icon.SCORE.getWidth() * 2 - 6, 12, 2);
         backBufferGraphics.drawString(scoreString, scoreX, 25);
+    }
+
+    /** Draws the survival countdown in the center of the gameplay HUD. */
+    public void drawSurvivalTimer(final Screen screen, final int remainingSeconds) {
+        backBufferGraphics.setColor(remainingSeconds <= 10 ? Color.YELLOW : Color.WHITE);
+        drawCenteredRegularString(screen, "Time " + remainingSeconds + "s", 25);
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */
@@ -1742,9 +1749,14 @@ public final class DrawManager {
     public void drawAchievementList(final Screen screen, final RecordsService service, int y) {
         for (Achievement achievement : Achievement.values()) {
             Long unlocked = service.getUnlockTime(achievement);
+            if (achievement == Achievement.SURVIVAL_PACIFIST && unlocked == null)
+                continue;
             backBufferGraphics.setColor(unlocked == null ? Color.WHITE : Color.GREEN);
-            drawCenteredRegularString(screen, achievement.getName() + (unlocked == null ? " [Locked]" : " [Unlocked]"),
-                    y);
+            if (achievement == Achievement.SURVIVAL_PACIFIST)
+                drawPacifistTitle(screen, y);
+            else
+                drawCenteredRegularString(screen,
+                        achievement.getName() + (unlocked == null ? " [Locked]" : " [Unlocked]"), y);
             backBufferGraphics.setColor(Color.GRAY);
             drawCenteredRegularString(screen, achievement.getCondition(), y + fontRegularMetrics.getHeight());
             if (unlocked != null)
@@ -1753,6 +1765,25 @@ public final class DrawManager {
                         y + fontRegularMetrics.getHeight() * 2);
             y += fontRegularMetrics.getHeight() * 3 + 4;
         }
+    }
+
+    public void drawPacifistUnlocked(final Screen screen) {
+        int y = screen.getHeight() * 2 / 3;
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredRegularString(screen, "Hidden title unlocked", y);
+        drawPacifistTitle(screen, y + fontRegularMetrics.getHeight() * 2);
+    }
+
+    private void drawPacifistTitle(final Screen screen, final int y) {
+        String title = Achievement.SURVIVAL_PACIFIST.getName();
+        Font font = new Font(Font.SANS_SERIF, Font.BOLD, 15);
+        if (font.canDisplayUpTo(title) >= 0) {
+            drawCenteredRegularString(screen, "Cosmic Pacifist", y);
+            return;
+        }
+        backBufferGraphics.setFont(font);
+        int width = backBufferGraphics.getFontMetrics().stringWidth(title);
+        backBufferGraphics.drawString(title, (screen.getWidth() - width) / 2, y);
     }
 
     public void drawMenu(final Screen screen, final int option) {
@@ -2118,7 +2149,7 @@ public final class DrawManager {
     }
 
     public void drawGameModeMenu(final Screen screen, final int option) {
-        String[] labels = { "Endless Mode", "Campaign Mode", "Back" };
+        String[] labels = { "Endless Mode", "Campaign Mode", "60-Second Survival", "Back" };
 
         backBufferGraphics.setFont(fontBig);
         backBufferGraphics.setColor(Color.GREEN);
@@ -2130,5 +2161,25 @@ public final class DrawManager {
             drawCenteredRegularString(screen, labels[i],
                     screen.getHeight() / 3 + 60 + i * 40);
         }
+    }
+
+    /** Draws the survival challenge's result and available actions. */
+    public void drawSurvivalResult(final Screen screen, final int score,
+            final long survivedMillis, final boolean survived, final boolean acceptsInput) {
+        int height = screen.getHeight();
+        int spacing = fontRegularMetrics.getHeight();
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "60-Second Survival", height / 4);
+
+        backBufferGraphics.setColor(survived ? Color.GREEN : Color.RED);
+        drawCenteredBigString(screen, survived ? "Survived!" : "Game Over", height / 3);
+
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "Score " + score, height / 2);
+        drawCenteredRegularString(screen, String.format(Locale.ROOT,
+                "Time %.3f / 60 s", survivedMillis / 1000.0), height / 2 + spacing * 2);
+
+        backBufferGraphics.setColor(acceptsInput ? Color.GREEN : Color.GRAY);
+        drawCenteredRegularString(screen, "Space: retry   Esc: mode menu", height - spacing * 2);
     }
 }

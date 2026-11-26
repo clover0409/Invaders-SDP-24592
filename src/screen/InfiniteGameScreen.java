@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import vfx.ParticleSystem;
 
 import audio.AudioManager;
@@ -33,11 +34,14 @@ import entity.ZigzagEnemyShip;
 import engine.DifficultyAdjustWhilePlaying;
 
 /**
- * Implements the infinite mode game screen: zigzagging enemies keep spawning
- * from the top of the screen until the player runs out of lives or quits.
+ * Runs Infinite Mode and the timed survival variant with shared controls and enemies.
  */
 public class InfiniteGameScreen extends Screen {
 
+	public static final int SURVIVAL_SECONDS = 60;
+	private static final int SURVIVAL_MILLIS = SURVIVAL_SECONDS * 1000;
+	private static final int SURVIVAL_INITIAL_SPAWN_INTERVAL = 800;
+	private static final int SURVIVAL_FINAL_SPAWN_INTERVAL = 350;
 	private static final int SEPARATION_LINE_HEIGHT = 40;
 	private static final int SIDE_MARGIN = 20;
 	private static final int INPUT_DELAY = 6000;
@@ -52,6 +56,8 @@ public class InfiniteGameScreen extends Screen {
 	private static final double ENEMY_FIRE_CHANCE = 0.003;
 
 	private int getEnemyBulletSpeed() {
+		if (this.survivalChallenge)
+			return ENEMY_BULLET_SPEED;
 		return (int) DifficultyAdjustWhilePlaying.getInstance().adjustEnemyBulletSpeed(ENEMY_BULLET_SPEED);
 	}
 
@@ -79,6 +85,11 @@ public class InfiniteGameScreen extends Screen {
 	private ParticleSystem particleSystem;
 	private long gameStartTime;
 	private int lastCountdown = -1;
+	private final boolean survivalChallenge;
+	private final LongSupplier nanoTime;
+	private boolean survivalStarted;
+	private long survivalStartNanos;
+	private long survivalElapsedMillis;
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps) {
@@ -87,9 +98,27 @@ public class InfiniteGameScreen extends Screen {
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps, final RunSession runSession) {
+		this(gameState, width, height, fps, runSession, false, System::nanoTime);
+	}
+
+	public static InfiniteGameScreen forSurvival(final int width, final int height, final int fps) {
+		return forSurvival(width, height, fps, System::nanoTime);
+	}
+
+	static InfiniteGameScreen forSurvival(final int width, final int height,
+			final int fps, final LongSupplier nanoTime) {
+		return new InfiniteGameScreen(new GameState(1, 0, 1, 0, 0), width, height,
+				fps, null, true, nanoTime);
+	}
+
+	private InfiniteGameScreen(final GameState gameState, final int width,
+			final int height, final int fps, final RunSession runSession,
+			final boolean survivalChallenge, final LongSupplier nanoTime) {
 		super(width, height, fps);
+		this.survivalChallenge = survivalChallenge;
+		this.nanoTime = nanoTime;
 		this.runSession = runSession;
-		this.recordsService = Core.getRecordsService();
+		this.recordsService = survivalChallenge ? null : Core.getRecordsService();
 		this.recordsEvents.subscribe(EnemyDefeatedEvent.class,
 				new GameplayEventListener<EnemyDefeatedEvent>() {
 			public void onEvent(final EnemyDefeatedEvent event) {
@@ -112,7 +141,8 @@ public class InfiniteGameScreen extends Screen {
 		this.enemies = new ArrayList<ZigzagEnemyShip>();
 		this.bullets = new HashSet<Bullet>();
 		this.enemyBullets = new HashSet<Bullet>();
-		this.spawnCooldown = Core.getCooldown(INITIAL_SPAWN_INTERVAL);
+		this.spawnCooldown = Core.getCooldown(this.survivalChallenge
+				? SURVIVAL_INITIAL_SPAWN_INTERVAL : INITIAL_SPAWN_INTERVAL);
 		this.spawnCooldown.reset();
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
 		this.particleSystem = new ParticleSystem();
@@ -128,7 +158,8 @@ public class InfiniteGameScreen extends Screen {
 		try { super.run(); }
 		finally { if (runSession != null) runSession.stopActiveSegment(System.nanoTime()); }
 
-		this.logger.info("Infinite mode ended with a score of " + this.score);
+		this.logger.info((this.survivalChallenge ? "Survival challenge" : "Infinite mode")
+				+ " ended with a score of " + this.score);
 		return this.returnCode;
 	}
 
@@ -146,23 +177,32 @@ public class InfiniteGameScreen extends Screen {
 		}
 
 
-		//update the current lives remaining to the DifficultyAdjustWhilePlaying class
-		DifficultyAdjustWhilePlaying.getInstance().update(this.lives);
+		boolean acceptsGameplay = this.inputDelay.checkFinished();
+		if (this.survivalChallenge) {
+			if (acceptsGameplay && !this.gameOver)
+				updateSurvivalTimer();
+		} else {
+			DifficultyAdjustWhilePlaying.getInstance().update(this.lives);
+		}
 
-		if (this.inputDelay.checkFinished() && !this.gameOver) {
-			if (runSession != null) runSession.startActiveSegment(System.nanoTime());
-			if (runSession != null && recordsService != null)
-				recordsService.activeDuration(runSession.getRunId(), runSession.getActiveDurationMillis(System.nanoTime()));
-			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-				this.abandoned = true;
-				if (recordsService != null && runSession != null) recordsService.abandonRun(runSession.getRunId());
-				if (runSession != null) runSession.stopActiveSegment(System.nanoTime());
-				// Leaving with Esc plays the same back sound as the menu screens.
-				AudioManager.playSFX("audio/sfx/menu_back.wav");
-				this.isRunning = false;
-				return;
-			}
+		if (acceptsGameplay && !this.gameOver && runSession != null) {
+			long now = System.nanoTime();
+			runSession.startActiveSegment(now);
+			if (recordsService != null)
+				recordsService.activeDuration(runSession.getRunId(), runSession.getActiveDurationMillis(now));
+		}
 
+		if (!this.gameOver && (acceptsGameplay || this.survivalChallenge)
+				&& inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
+			this.abandoned = true;
+			if (recordsService != null && runSession != null) recordsService.abandonRun(runSession.getRunId());
+			if (runSession != null) runSession.stopActiveSegment(System.nanoTime());
+			AudioManager.playSFX("audio/sfx/menu_back.wav");
+			this.isRunning = false;
+			return;
+		}
+
+		if (acceptsGameplay && !this.gameOver) {
 			updatePlayerControls();
 			spawnEnemy();
 			moveEnemies();
@@ -175,6 +215,16 @@ public class InfiniteGameScreen extends Screen {
 		this.particleSystem.update();
 		draw();
 
+		// Resolve the deadline after the active frame, including its collisions.
+		if (hasSurvived()) {
+			RecordsService playerRecords = Core.getRecordsService();
+			if (playerRecords != null)
+				playerRecords.awardSurvivalPacifist(true, this.bulletsShot);
+			this.gameOver = true;
+			this.isRunning = false;
+			return;
+		}
+
 		if (this.lives == 0 && !this.gameOver) {
 			this.gameOver = true;
 			AudioManager.playSFX("audio/sfx/game_over.wav");
@@ -184,6 +234,24 @@ public class InfiniteGameScreen extends Screen {
 
 		if (this.gameOver && this.screenFinishedCooldown.checkFinished())
 			this.isRunning = false;
+	}
+
+	private void updateSurvivalTimer() {
+		long now = this.nanoTime.getAsLong();
+		if (!this.survivalStarted) {
+			this.survivalStarted = true;
+			this.survivalStartNanos = now;
+		}
+		this.survivalElapsedMillis = Math.min(SURVIVAL_MILLIS,
+				(now - this.survivalStartNanos) / 1_000_000L);
+	}
+
+	public long getSurvivalElapsedMillis() {
+		return this.survivalElapsedMillis;
+	}
+
+	public boolean hasSurvived() {
+		return this.survivalElapsedMillis == SURVIVAL_MILLIS && this.lives > 0;
 	}
 
 	void updatePlayerControls() {
@@ -244,10 +312,18 @@ public class InfiniteGameScreen extends Screen {
 		this.enemies.add(new ZigzagEnemyShip(positionX,
 				SEPARATION_LINE_HEIGHT, spriteType, fallSpeed));
 
-		int interval = Math.max(MINIMUM_SPAWN_INTERVAL, INITIAL_SPAWN_INTERVAL
-				- this.shipsDestroyed * SPAWN_INTERVAL_STEP);
+		int interval = this.survivalChallenge
+				? survivalSpawnInterval(this.survivalElapsedMillis)
+				: Math.max(MINIMUM_SPAWN_INTERVAL, INITIAL_SPAWN_INTERVAL
+						- this.shipsDestroyed * SPAWN_INTERVAL_STEP);
 		this.spawnCooldown = Core.getCooldown(interval);
 		this.spawnCooldown.reset();
+	}
+
+	static int survivalSpawnInterval(final long elapsedMillis) {
+		long reduction = (SURVIVAL_INITIAL_SPAWN_INTERVAL - SURVIVAL_FINAL_SPAWN_INTERVAL)
+				* elapsedMillis / SURVIVAL_MILLIS;
+		return SURVIVAL_INITIAL_SPAWN_INTERVAL - (int) reduction;
 	}
 
 	private void moveEnemies() {
@@ -294,10 +370,15 @@ public class InfiniteGameScreen extends Screen {
 
 		drawManager.drawScore(this, this.score);
 		drawManager.drawLives(this, this.lives, this.maxLives);
-		try {
-			drawManager.drawCredits(this, Core.getAssetHudSnapshot().getCredits());
-		} catch (IllegalStateException e) {
-			// Assets are not initialized (e.g. screen-only tests): skip credits.
+		if (this.survivalChallenge) {
+			int remainingSeconds = (int) ((SURVIVAL_MILLIS - this.survivalElapsedMillis + 999) / 1000);
+			drawManager.drawSurvivalTimer(this, remainingSeconds);
+		} else {
+			try {
+				drawManager.drawCredits(this, Core.getAssetHudSnapshot().getCredits());
+			} catch (IllegalStateException e) {
+				// Assets are not initialized (e.g. screen-only tests): skip credits.
+			}
 		}
 		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
 
@@ -309,7 +390,8 @@ public class InfiniteGameScreen extends Screen {
 			int countdown = (int) ((INPUT_DELAY
 					- (System.currentTimeMillis() - this.gameStartTime)) / 1000);
 			playCountdownSound(countdown);
-			drawManager.drawCountDown(this, "Infinite Mode", countdown);
+			drawManager.drawCountDown(this,
+					this.survivalChallenge ? "60s Survival" : "Infinite Mode", countdown);
 			drawManager.drawHorizontalLine(this,
 					this.height / 2 - this.height / 12);
 			drawManager.drawHorizontalLine(this,

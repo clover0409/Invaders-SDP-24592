@@ -125,6 +125,27 @@ public final class RecordsService {
                 firstRun ? OptionalInt.empty() : OptionalInt.of(previousBest)));
     }
 
+    /**
+     * Saves the hidden survival title independently of regular run history.
+     * Returns true only for the first qualifying finish.
+     */
+    public synchronized boolean awardSurvivalPacifist(final boolean survived, final int shotsFired) {
+        if (this.closed || !survived || shotsFired != 0)
+            return false;
+        String id = Achievement.SURVIVAL_PACIFIST.getId();
+        if (this.unlockTimes.containsKey(id))
+            return false;
+        this.unlockTimes.put(id, System.currentTimeMillis());
+        this.notifications.addLast(Achievement.SURVIVAL_PACIFIST);
+        enqueueSave();
+        return true;
+    }
+
+    /** The survival results consume this reveal without draining other notifications. */
+    public synchronized boolean consumeSurvivalPacifistReveal() {
+        return this.notifications.removeFirstOccurrence(Achievement.SURVIVAL_PACIFIST);
+    }
+
     private void unlock(final Achievement achievement, final long timeMillis) {
         if (this.unlockTimes.containsKey(achievement.getId()))
             return;

@@ -7,11 +7,13 @@ import engine.Core;
 
 public class GameModeScreen extends Screen { // Implementation of the game mode selection screen.
 
+    public static final int SURVIVAL_MODE = 15;
     private static final int SELECTION_TIME = 200;
-    private static final int NUM_CHOICES = 3; // Number of game mode choices (0: Infinite, 1: Campaign, 2: Back)
+    private static final int NUM_CHOICES = 4;
 
     private int selected;
     private Cooldown selectionCooldown;
+    private boolean escapeWasDown;
 
     public GameModeScreen(final int width, final int height, final int fps) {
         super(width, height, fps);
@@ -19,6 +21,7 @@ public class GameModeScreen extends Screen { // Implementation of the game mode 
         this.returnCode = 1; // Par défaut : retour au menu principal
         this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
+        this.escapeWasDown = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
     }
 
     public final int run() {
@@ -30,8 +33,20 @@ public class GameModeScreen extends Screen { // Implementation of the game mode 
         super.update();
 
         draw();
-        if (this.selectionCooldown.checkFinished()
-                && this.inputDelay.checkFinished()) {
+        boolean escapeDown = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
+        boolean escapePressed = escapeDown && !this.escapeWasDown;
+        this.escapeWasDown = escapeDown;
+        if (!this.inputDelay.checkFinished())
+            return;
+
+        if (escapePressed) {
+            this.returnCode = 1;
+            this.isRunning = false;
+            AudioManager.playSFX("audio/sfx/menu_back.wav");
+            return;
+        }
+
+        if (this.selectionCooldown.checkFinished()) {
 
             if (inputManager.isKeyDown(KeyEvent.VK_UP)
                     || inputManager.isKeyDown(KeyEvent.VK_W)) {
@@ -48,24 +63,17 @@ public class GameModeScreen extends Screen { // Implementation of the game mode 
             }
 
             if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-                if (this.selected == 2) {
-                    this.returnCode = 1;
-                } else if (this.selected == 0) {
-                    this.returnCode = 8;
-                } else if (this.selected == 1) {
-                    this.returnCode = 2;
-                }
+                this.returnCode = switch (this.selected) {
+                    case 0 -> 8;
+                    case 1 -> 2;
+                    case 2 -> SURVIVAL_MODE;
+                    default -> 1;
+                };
                 this.isRunning = false;
                 if(this.returnCode==1)
                     AudioManager.playSFX("audio/sfx/menu_back.wav");
                 else
                     AudioManager.playSFX("audio/sfx/menu_select.wav");
-            }
-
-            if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-                this.returnCode = 1;
-                this.isRunning = false;
-                AudioManager.playSFX("audio/sfx/menu_back.wav");
             }
         }
     }
