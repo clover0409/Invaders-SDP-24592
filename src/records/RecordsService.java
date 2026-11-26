@@ -56,6 +56,9 @@ public final class RecordsService {
                     + exception.getMessage();
         }
         this.loadWarning = this.store.getLoadWarning();
+        // Existing profiles may already contain every prerequisite from an older build.
+        if (!this.writesBlocked && !this.unlockTimes.isEmpty())
+            unlockCompletionist(Collections.max(this.unlockTimes.values()).longValue(), false);
     }
 
     public synchronized void startRun(final String runId) {
@@ -127,8 +130,19 @@ public final class RecordsService {
 
     /** Saves a challenge victory without adding a regular run or gameplay notification. */
     public synchronized boolean completeSurvivalChallenge() {
-        return !this.closed && unlock(Achievement.SURVIVAL_CHALLENGE,
-                System.currentTimeMillis(), false);
+        return completeSurvivalChallengeWithUnlocks().contains(Achievement.SURVIVAL_CHALLENGE);
+    }
+
+    /** Returns only this victory's unlocks, leaving regular-run feedback untouched. */
+    public synchronized List<Achievement> completeSurvivalChallengeWithUnlocks() {
+        if (this.closed) return Collections.emptyList();
+        boolean hadCompletionist = this.unlockTimes.containsKey(Achievement.ALL_ACHIEVEMENTS.getId());
+        List<Achievement> unlocked = new ArrayList<Achievement>();
+        if (unlock(Achievement.SURVIVAL_CHALLENGE, System.currentTimeMillis(), false))
+            unlocked.add(Achievement.SURVIVAL_CHALLENGE);
+        if (!hadCompletionist && this.unlockTimes.containsKey(Achievement.ALL_ACHIEVEMENTS.getId()))
+            unlocked.add(Achievement.ALL_ACHIEVEMENTS);
+        return Collections.unmodifiableList(unlocked);
     }
 
     private void unlock(final Achievement achievement, final long timeMillis) {
@@ -144,8 +158,20 @@ public final class RecordsService {
             this.currentRunUnlocks.add(achievement);
             this.notifications.addLast(achievement);
         }
+        if (achievement != Achievement.ALL_ACHIEVEMENTS)
+            unlockCompletionist(timeMillis, duringRun);
         enqueueSave();
         return true;
+    }
+
+    private void unlockCompletionist(final long timeMillis, final boolean duringRun) {
+        if (this.unlockTimes.containsKey(Achievement.ALL_ACHIEVEMENTS.getId())) return;
+        for (Achievement achievement : Achievement.values()) {
+            if (achievement != Achievement.ALL_ACHIEVEMENTS
+                    && !this.unlockTimes.containsKey(achievement.getId()))
+                return;
+        }
+        unlock(Achievement.ALL_ACHIEVEMENTS, timeMillis, duringRun);
     }
 
 

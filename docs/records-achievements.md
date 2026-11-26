@@ -5,7 +5,7 @@ The local implementation covers team requirements 3.1–3.7. Its initial integra
 ## Usage
 
 - On the title screen, use Up/Down to select **Records & Achievements**, then press Space to open it. Records uses screen code 9, preserving the Infinite Mode shortcut I and screen code 8.
-- Use Left/Right to switch between **Run Records** and **Achievements**. Press Escape or Space to return to the menu.
+- Use Left/Right to switch between **Run Records** and **Achievements**. On the Achievements tab, use Up/Down to browse four achievements per page. Press Escape or Space to return to the menu.
 - When an achievement unlocks during gameplay, a notification appears at the top of the HUD for approximately three seconds. The results screen lists all achievements unlocked during that run.
 - The profile is stored at `.space-invaders/records-achievements.properties` under the user's home directory. Run records and achievement unlock times are saved together; personal bests are recalculated from the complete record history.
 
@@ -13,7 +13,7 @@ The local implementation covers team requirements 3.1–3.7. Its initial integra
 
 **Survival Champion** (`survival_challenge`) unlocks on the first victory in
 the 60-Second Survival mode introduced by PR #15. The opening countdown does
-not count. Death before the deadline or leaving with Escape does not unlock
+not count. A fatal collision in the final active frame, death before the deadline, or leaving with Escape does not unlock
 it. This is separate from **Still Flying**, which tracks 60 active seconds in
 a regular run.
 
@@ -27,6 +27,27 @@ Regression coverage is in `SurvivalChallengeTest` and `SurvivalAchievementTest`:
 the 59,999/60,000 ms boundary, a collision at the winning deadline, a fatal
 hit, leaving during the countdown, retry, persistence, duplicate victories,
 and separation from regular-run achievements and notifications.
+
+## Completionist Achievement
+
+**Completionist** (`all_achievements`) unlocks once all six other achievements
+have been earned in the same local profile, including **Survival Champion**.
+It does not require itself. The final prerequisite may be earned in a regular
+run or the survival challenge. A regular run queues the normal HUD notice and
+includes Completionist in its results; a challenge victory lists both new
+achievements on its result screen without adding regular-run notifications.
+
+Existing profiles that already have all six prerequisites receive Completionist
+on load, using the latest prerequisite unlock time. This backfill is saved
+without replaying old notifications or changing records or existing unlock
+times. Profiles missing any prerequisite keep Completionist locked. The
+existing version-1 profile format is preserved.
+
+`CompletionistAchievementTest` covers each of the six possible final
+prerequisites, one-time unlocks, notification routing, persistence and older
+profiles. `PlayerRecordsPaginationTest` checks page wrapping, tab reset and
+return navigation. PR #16 is synchronized with the merged PR #15, preserving
+its collision-before-victory rule and held-Escape navigation fix.
 
 ## Local Data Protection
 

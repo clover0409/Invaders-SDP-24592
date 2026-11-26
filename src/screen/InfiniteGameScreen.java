@@ -91,7 +91,7 @@ public class InfiniteGameScreen extends Screen {
 	private long survivalStartNanos;
 	private long survivalElapsedMillis;
 	private RecordsService survivalRecordsService;
-	private boolean survivalAchievementUnlocked;
+	private List<Achievement> survivalUnlocks = Collections.emptyList();
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps) {
@@ -188,17 +188,8 @@ public class InfiniteGameScreen extends Screen {
 
 		boolean acceptsGameplay = this.inputDelay.checkFinished();
 		if (this.survivalChallenge) {
-			if (acceptsGameplay && !this.gameOver) {
+			if (acceptsGameplay && !this.gameOver)
 				updateSurvivalTimer();
-				if (hasSurvived()) {
-					this.gameOver = true;
-					this.survivalAchievementUnlocked = this.survivalRecordsService != null
-							&& this.survivalRecordsService.completeSurvivalChallenge();
-					draw();
-					this.isRunning = false;
-					return;
-				}
-			}
 		} else {
 			DifficultyAdjustWhilePlaying.getInstance().update(this.lives);
 		}
@@ -233,6 +224,15 @@ public class InfiniteGameScreen extends Screen {
 		this.particleSystem.update();
 		draw();
 
+		// Resolve the deadline after the active frame, including its collisions.
+		if (hasSurvived()) {
+			this.gameOver = true;
+			if (this.survivalRecordsService != null)
+				this.survivalUnlocks = this.survivalRecordsService.completeSurvivalChallengeWithUnlocks();
+			this.isRunning = false;
+			return;
+		}
+
 		if (this.lives == 0 && !this.gameOver) {
 			this.gameOver = true;
 			AudioManager.playSFX("audio/sfx/game_over.wav");
@@ -259,11 +259,11 @@ public class InfiniteGameScreen extends Screen {
 	}
 
 	public boolean hasSurvived() {
-		return this.survivalElapsedMillis == SURVIVAL_MILLIS;
+		return this.survivalElapsedMillis == SURVIVAL_MILLIS && this.lives > 0;
 	}
 
-	public boolean isSurvivalAchievementUnlocked() {
-		return this.survivalAchievementUnlocked;
+	public List<Achievement> getSurvivalUnlocks() {
+		return this.survivalUnlocks;
 	}
 
 	void updatePlayerControls() {

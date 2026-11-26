@@ -313,7 +313,7 @@ public final class Core {
 					currentScreen = new SurvivalResultScreen(width, height, FPS,
 							challenge.getGameState().getScore(),
 							challenge.getSurvivalElapsedMillis(), challenge.hasSurvived(),
-							challenge.isSurvivalAchievementUnlocked());
+							challenge.getSurvivalUnlocks());
 					returnCode = frame.setScreen(currentScreen);
 					break;
 				}
