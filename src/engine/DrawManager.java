@@ -1749,9 +1749,14 @@ public final class DrawManager {
     public void drawAchievementList(final Screen screen, final RecordsService service, int y) {
         for (Achievement achievement : Achievement.values()) {
             Long unlocked = service.getUnlockTime(achievement);
+            if (achievement == Achievement.SURVIVAL_PACIFIST && unlocked == null)
+                continue;
             backBufferGraphics.setColor(unlocked == null ? Color.WHITE : Color.GREEN);
-            drawCenteredRegularString(screen, achievement.getName() + (unlocked == null ? " [Locked]" : " [Unlocked]"),
-                    y);
+            if (achievement == Achievement.SURVIVAL_PACIFIST)
+                drawPacifistTitle(screen, y);
+            else
+                drawCenteredRegularString(screen,
+                        achievement.getName() + (unlocked == null ? " [Locked]" : " [Unlocked]"), y);
             backBufferGraphics.setColor(Color.GRAY);
             drawCenteredRegularString(screen, achievement.getCondition(), y + fontRegularMetrics.getHeight());
             if (unlocked != null)
@@ -1760,6 +1765,25 @@ public final class DrawManager {
                         y + fontRegularMetrics.getHeight() * 2);
             y += fontRegularMetrics.getHeight() * 3 + 4;
         }
+    }
+
+    public void drawPacifistUnlocked(final Screen screen) {
+        int y = screen.getHeight() * 2 / 3;
+        backBufferGraphics.setColor(Color.GREEN);
+        drawCenteredRegularString(screen, "Hidden title unlocked", y);
+        drawPacifistTitle(screen, y + fontRegularMetrics.getHeight() * 2);
+    }
+
+    private void drawPacifistTitle(final Screen screen, final int y) {
+        String title = Achievement.SURVIVAL_PACIFIST.getName();
+        Font font = new Font(Font.SANS_SERIF, Font.BOLD, 15);
+        if (font.canDisplayUpTo(title) >= 0) {
+            drawCenteredRegularString(screen, "Cosmic Pacifist", y);
+            return;
+        }
+        backBufferGraphics.setFont(font);
+        int width = backBufferGraphics.getFontMetrics().stringWidth(title);
+        backBufferGraphics.drawString(title, (screen.getWidth() - width) / 2, y);
     }
 
     public void drawMenu(final Screen screen, final int option) {
