@@ -4,11 +4,13 @@ import java.awt.event.KeyEvent;
 
 import audio.AudioManager;
 import records.RecordsService;
+import engine.DrawManager;
 
 /** Local browsing page for completed runs and achievements. */
 public final class PlayerRecordsScreen extends Screen {
     private final RecordsService service;
     private int tab;
+    private int achievementPage;
     private long nextInputAt;
 
     public PlayerRecordsScreen(final int width, final int height,
@@ -27,7 +29,7 @@ public final class PlayerRecordsScreen extends Screen {
     protected void update() {
         super.update();
         this.drawManager.initDrawing(this);
-        this.drawManager.drawRecordsPage(this, this.service, this.tab);
+        this.drawManager.drawRecordsPage(this, this.service, this.tab, this.achievementPage);
         this.drawManager.completeDrawing(this);
         if (!this.inputDelay.checkFinished()
                 || System.currentTimeMillis() < this.nextInputAt)
@@ -40,6 +42,14 @@ public final class PlayerRecordsScreen extends Screen {
         } else if (this.inputManager.isKeyDown(KeyEvent.VK_LEFT)
                 || this.inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
             this.tab = 1 - this.tab;
+            this.achievementPage = 0;
+            this.nextInputAt = System.currentTimeMillis() + 250;
+            AudioManager.playSFX("audio/sfx/menu_move.wav");
+        } else if (this.tab == 1 && (this.inputManager.isKeyDown(KeyEvent.VK_UP)
+                || this.inputManager.isKeyDown(KeyEvent.VK_DOWN))) {
+            int pages = DrawManager.getAchievementPageCount();
+            int direction = this.inputManager.isKeyDown(KeyEvent.VK_UP) ? -1 : 1;
+            this.achievementPage = (this.achievementPage + direction + pages) % pages;
             this.nextInputAt = System.currentTimeMillis() + 250;
             AudioManager.playSFX("audio/sfx/menu_move.wav");
         }

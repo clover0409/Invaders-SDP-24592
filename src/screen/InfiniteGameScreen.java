@@ -90,6 +90,8 @@ public class InfiniteGameScreen extends Screen {
 	private boolean survivalStarted;
 	private long survivalStartNanos;
 	private long survivalElapsedMillis;
+	private RecordsService survivalRecordsService;
+	private List<Achievement> survivalUnlocks = Collections.emptyList();
 
 	public InfiniteGameScreen(final GameState gameState, final int width,
 			final int height, final int fps) {
@@ -107,8 +109,15 @@ public class InfiniteGameScreen extends Screen {
 
 	static InfiniteGameScreen forSurvival(final int width, final int height,
 			final int fps, final LongSupplier nanoTime) {
-		return new InfiniteGameScreen(new GameState(1, 0, 1, 0, 0), width, height,
+		return forSurvival(width, height, fps, nanoTime, Core.getRecordsService());
+	}
+
+	static InfiniteGameScreen forSurvival(final int width, final int height,
+			final int fps, final LongSupplier nanoTime, final RecordsService service) {
+		InfiniteGameScreen challenge = new InfiniteGameScreen(new GameState(1, 0, 1, 0, 0), width, height,
 				fps, null, true, nanoTime);
+		challenge.survivalRecordsService = service;
+		return challenge;
 	}
 
 	private InfiniteGameScreen(final GameState gameState, final int width,
@@ -218,6 +227,8 @@ public class InfiniteGameScreen extends Screen {
 		// Resolve the deadline after the active frame, including its collisions.
 		if (hasSurvived()) {
 			this.gameOver = true;
+			if (this.survivalRecordsService != null)
+				this.survivalUnlocks = this.survivalRecordsService.completeSurvivalChallengeWithUnlocks();
 			this.isRunning = false;
 			return;
 		}
@@ -249,6 +260,10 @@ public class InfiniteGameScreen extends Screen {
 
 	public boolean hasSurvived() {
 		return this.survivalElapsedMillis == SURVIVAL_MILLIS && this.lives > 0;
+	}
+
+	public List<Achievement> getSurvivalUnlocks() {
+		return this.survivalUnlocks;
 	}
 
 	void updatePlayerControls() {
