@@ -136,8 +136,14 @@ public final class RecordsService {
         if (this.unlockTimes.containsKey(id))
             return false;
         this.unlockTimes.put(id, System.currentTimeMillis());
+        this.notifications.addLast(Achievement.SURVIVAL_PACIFIST);
         enqueueSave();
         return true;
+    }
+
+    /** The survival results consume this reveal without draining other notifications. */
+    public synchronized boolean consumeSurvivalPacifistReveal() {
+        return this.notifications.removeFirstOccurrence(Achievement.SURVIVAL_PACIFIST);
     }
 
     private void unlock(final Achievement achievement, final long timeMillis) {

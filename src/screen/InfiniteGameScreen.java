@@ -217,6 +217,9 @@ public class InfiniteGameScreen extends Screen {
 
 		// Resolve the deadline after the active frame, including its collisions.
 		if (hasSurvived()) {
+			RecordsService playerRecords = Core.getRecordsService();
+			if (playerRecords != null)
+				playerRecords.awardSurvivalPacifist(true, this.bulletsShot);
 			this.gameOver = true;
 			this.isRunning = false;
 			return;

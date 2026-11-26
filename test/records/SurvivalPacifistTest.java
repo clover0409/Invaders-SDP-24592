@@ -29,6 +29,8 @@ class SurvivalPacifistTest {
             assertNotNull(unlockedAt);
             assertFalse(records.awardSurvivalPacifist(true, 0));
             assertEquals(0, records.getRecordCount());
+            assertTrue(records.consumeSurvivalPacifistReveal());
+            assertFalse(records.consumeSurvivalPacifistReveal());
             assertNull(records.pollNotification());
         } finally {
             records.close();
@@ -39,6 +41,7 @@ class SurvivalPacifistTest {
         try {
             assertEquals(unlockedAt, reloaded.getUnlockTime(Achievement.SURVIVAL_PACIFIST));
             assertFalse(reloaded.awardSurvivalPacifist(true, 0));
+            assertFalse(reloaded.consumeSurvivalPacifistReveal());
         } finally {
             reloaded.close();
         }
