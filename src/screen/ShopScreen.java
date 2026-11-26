@@ -10,10 +10,12 @@ import java.util.List;
 import shop.ShopController;
 import shop.ShopController.SaveStatus;
 import shop.ShopProduct;
+import shop.ShipCosmetic;
 
 /** Displays products using the shared session controller. */
 public class ShopScreen extends Screen {
     public static final int RETURN_TO_MAIN_MENU = 1;
+    public static final int OPEN_COSMETICS_PREVIEW = 16;
 
     private final ShopController controller;
     private final List<ShopProduct> upgrades = new ArrayList<ShopProduct>();
@@ -27,6 +29,7 @@ public class ShopScreen extends Screen {
     private int selectedAction;
     private PurchaseResult lastResult;
     private boolean lastProductAvailableByDefault;
+    private boolean pendingCosmeticPreview;
     private boolean upHeld;
     private boolean downHeld;
     private boolean leftHeld;
@@ -70,6 +73,7 @@ public class ShopScreen extends Screen {
         selectedAction = 0;
         lastResult = null;
         lastProductAvailableByDefault = false;
+        pendingCosmeticPreview = false;
         inputDelay.reset();
 
         AudioManager.playBGM("audio/bgm/music_shop.wav");
@@ -81,7 +85,7 @@ public class ShopScreen extends Screen {
     @Override
     public int run() {
         super.run();
-        return RETURN_TO_MAIN_MENU;
+        return this.returnCode;
     }
 
     @Override
@@ -171,6 +175,10 @@ public class ShopScreen extends Screen {
 
         if (lastProductAvailableByDefault || lastResult == PurchaseResult.SUCCESS) {
             AudioManager.playSFX("audio/sfx/shop_successful_purchase.wav");
+            if (lastResult == PurchaseResult.SUCCESS && ShipCosmetic.fromProductId(product.getId()) != null) {
+                pendingCosmeticPreview = true;
+                previewSavedCosmetic();
+            }
         } else {
             AudioManager.playSFX("audio/sfx/shop_purchase_failure.wav");
         }
@@ -181,6 +189,15 @@ public class ShopScreen extends Screen {
         assets = controller.snapshot();
         if (controller.getSaveStatus() != SaveStatus.FAILED) selectedAction = 0;
         AudioManager.playSFX("audio/sfx/menu_select.wav");
+        previewSavedCosmetic();
+    }
+
+    private void previewSavedCosmetic() {
+        if (pendingCosmeticPreview && controller.getSaveStatus() == SaveStatus.SAVED) {
+            pendingCosmeticPreview = false;
+            returnCode = OPEN_COSMETICS_PREVIEW;
+            isRunning = false;
+        }
     }
 
     private void leaveShop() {

@@ -33,7 +33,8 @@ class PermanentUpgradesTest {
         int expectedBalance = 3000;
         for (PermanentUpgrade upgrade : PermanentUpgrade.values()) {
             for (int level = 1; level <= upgrade.getMaxLevel(); level++) {
-                assertEquals(6, shop.getProducts().size());
+                assertEquals(PermanentUpgrade.values().length, shop.getProducts().stream()
+                        .filter(product -> PermanentUpgrade.forProduct(product.getId()) != null).count());
                 assertEquals(upgrade.getProductId(level),
                         shop.getProducts().get(upgrade.ordinal()).getId());
                 assertEquals(PurchaseResult.SUCCESS, shop.purchase(upgrade.getProductId(level)));

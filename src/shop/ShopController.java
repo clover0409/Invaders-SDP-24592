@@ -72,6 +72,10 @@ public final class ShopController {
         return assets.getBalance();
     }
 
+    public synchronized boolean ownsCosmetic(ShipCosmetic cosmetic) {
+        return assets.isUnlocked(cosmetic.getId());
+    }
+
     /** Uses the same ship availability and saved ownership as the Shop. */
     public synchronized boolean isShipAvailable(ShipType type) {
         if (type == null) return false;
