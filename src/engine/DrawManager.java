@@ -12,10 +12,12 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import screen.Screen;
+import screen.AccidentReport;
 import hud.FloatingScoreHud;
 import currency.PermanentUpgrade;
 import currency.PlayerAssetsState;
@@ -386,6 +388,12 @@ public final class DrawManager {
         int scoreX = screen.getWidth() - 60;
         drawIcon(Icon.SCORE, scoreX - Icon.SCORE.getWidth() * 2 - 6, 12, 2);
         backBufferGraphics.drawString(scoreString, scoreX, 25);
+    }
+
+    /** Draws the survival countdown in the center of the gameplay HUD. */
+    public void drawSurvivalTimer(final Screen screen, final int remainingSeconds) {
+        backBufferGraphics.setColor(remainingSeconds <= 10 ? Color.YELLOW : Color.WHITE);
+        drawCenteredRegularString(screen, "Time " + remainingSeconds + "s", 25);
     }
 
     /** K, M, B, T, Q suffixes for shortened credits. */
@@ -844,6 +852,27 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, modeLabel, screen.getHeight()
                 / height + fontRegularMetrics.getHeight() * 8);
+    }
+
+    public void drawStandardAccidentReport(final Screen screen,
+            final AccidentReport report, final boolean isNewRecord) {
+        int modeY = screen.getHeight() / (isNewRecord ? 4 : 2) + fontRegularMetrics.getHeight() * 8;
+        drawAccidentReport(screen, report, modeY + fontRegularMetrics.getHeight());
+    }
+
+    public void drawAccidentReport(final Screen screen, final AccidentReport report, final int y) {
+        if (report == null)
+            return;
+        String message = report.getMessage();
+        Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
+        if (font.canDisplayUpTo(message) >= 0) {
+            font = fontRegular.deriveFont(11f);
+            message = report.getFallback();
+        }
+        backBufferGraphics.setFont(font);
+        backBufferGraphics.setColor(Color.YELLOW);
+        int textWidth = backBufferGraphics.getFontMetrics().stringWidth(message);
+        backBufferGraphics.drawString(message, (screen.getWidth() - textWidth) / 2, y);
     }
 
     /**
@@ -1691,8 +1720,19 @@ public final class DrawManager {
             final List<Achievement> achievements, final boolean acceptsInput,
             final int failedStage, final boolean gameCleared, final String modeLabel,
             final String personalBestLabel) {
+        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, name, selected,
+                achievements, acceptsInput, failedStage, gameCleared, modeLabel, personalBestLabel, null);
+    }
+
+    public void drawAchievementResults(final Screen screen, final int score,
+            final int lives, final int enemies, final float accuracy,
+            final boolean isNewRecord, final char[] name, final int selected,
+            final List<Achievement> achievements, final boolean acceptsInput,
+            final int failedStage, final boolean gameCleared, final String modeLabel,
+            final String personalBestLabel, final AccidentReport report) {
         int spacing = fontRegularMetrics.getHeight();
-        int resultRows = 4 + (modeLabel == null ? 0 : 1) + (personalBestLabel == null ? 0 : 1);
+        int resultRows = 4 + (modeLabel == null ? 0 : 1) + (personalBestLabel == null ? 0 : 1)
+                + (report == null ? 0 : 1);
         int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
                 achievements.size(), resultRows);
         backBufferGraphics.setColor(Color.GREEN);
@@ -1719,6 +1759,10 @@ public final class DrawManager {
         }
         if (modeLabel != null) {
             drawCenteredRegularString(screen, modeLabel, y);
+            y += spacing;
+        }
+        if (report != null) {
+            drawAccidentReport(screen, report, y);
             y += spacing;
         }
         if (isNewRecord) {
@@ -2118,7 +2162,7 @@ public final class DrawManager {
     }
 
     public void drawGameModeMenu(final Screen screen, final int option) {
-        String[] labels = { "Endless Mode", "Campaign Mode", "Back" };
+        String[] labels = { "Endless Mode", "Campaign Mode", "60-Second Survival", "Back" };
 
         backBufferGraphics.setFont(fontBig);
         backBufferGraphics.setColor(Color.GREEN);
@@ -2130,5 +2174,25 @@ public final class DrawManager {
             drawCenteredRegularString(screen, labels[i],
                     screen.getHeight() / 3 + 60 + i * 40);
         }
+    }
+
+    /** Draws the survival challenge's result and available actions. */
+    public void drawSurvivalResult(final Screen screen, final int score,
+            final long survivedMillis, final boolean survived, final boolean acceptsInput) {
+        int height = screen.getHeight();
+        int spacing = fontRegularMetrics.getHeight();
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "60-Second Survival", height / 4);
+
+        backBufferGraphics.setColor(survived ? Color.GREEN : Color.RED);
+        drawCenteredBigString(screen, survived ? "Survived!" : "Game Over", height / 3);
+
+        backBufferGraphics.setColor(Color.WHITE);
+        drawCenteredRegularString(screen, "Score " + score, height / 2);
+        drawCenteredRegularString(screen, String.format(Locale.ROOT,
+                "Time %.3f / 60 s", survivedMillis / 1000.0), height / 2 + spacing * 2);
+
+        backBufferGraphics.setColor(acceptsInput ? Color.GREEN : Color.GRAY);
+        drawCenteredRegularString(screen, "Space: retry   Esc: mode menu", height - spacing * 2);
     }
 }

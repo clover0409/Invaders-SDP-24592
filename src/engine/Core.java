@@ -32,6 +32,7 @@ import screen.AudioControlScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
 import screen.InfiniteGameScreen;
+import screen.SurvivalResultScreen;
 import screen.ScoreScreen;
 import screen.Screen;
 import screen.TitleScreen;
@@ -238,7 +239,8 @@ public final class Core {
 							+ gameState.getBulletsShot() + " bullets shot and "
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							false, recordsService.getCurrentRunUnlocks(), campaignComparison);
+							false, recordsService.getCurrentRunUnlocks(), campaignComparison,
+							((GameScreen) currentScreen).getAccidentReport());
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;
@@ -301,6 +303,21 @@ public final class Core {
 					currentScreen = new GameplaySettingsScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					break;
+				case GameModeScreen.SURVIVAL_MODE: {
+					InfiniteGameScreen challenge = InfiniteGameScreen.forSurvival(width, height, FPS);
+					currentScreen = challenge;
+					frame.setScreen(challenge);
+					if (challenge.isAbandoned()) {
+						returnCode = 14;
+						break;
+					}
+					currentScreen = new SurvivalResultScreen(width, height, FPS,
+							challenge.getGameState().getScore(),
+							challenge.getSurvivalElapsedMillis(), challenge.hasSurvived(),
+							challenge.getAccidentReport());
+					returnCode = frame.setScreen(currentScreen);
+					break;
+				}
 				case 8:
 					// Infinite mode & score.
 					RunSession infiniteSession = new RunSession(UUID.randomUUID().toString());
@@ -329,7 +346,8 @@ public final class Core {
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					// Infinite mode score screen, Space plays infinite mode again.
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							true, recordsService.getCurrentRunUnlocks(), infiniteComparison);
+							true, recordsService.getCurrentRunUnlocks(), infiniteComparison,
+							((InfiniteGameScreen) currentScreen).getAccidentReport());
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;
