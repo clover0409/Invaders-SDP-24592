@@ -25,6 +25,9 @@ public final class ShopProducts {
             boolean available = ship != ShipType.SPEEDSTER;
             products.add(ShopProduct.ship(ship, available, available ? 0 : 200));
         }
+        for (ShipCosmetic cosmetic : ShipCosmetic.values()) {
+            products.add(cosmetic.toProduct());
+        }
         return Collections.unmodifiableList(products);
     }
 

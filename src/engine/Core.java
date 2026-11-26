@@ -44,6 +44,7 @@ import screen.SettingsScreen;
 import screen.ControlsSettingsScreen;
 import screen.GameplaySettingsScreen;
 import shop.ShopController;
+import shop.ShipCosmetic;
 import shop.ShopProduct;
 import shop.ShopProducts;
 import java.util.List;
@@ -280,11 +281,16 @@ public final class Core {
 				}
 
 				case 13: {
-					currentScreen = new HangarScreen(width, height, FPS);
+					currentScreen = new HangarScreen(width, height, FPS, selectedShip, false);
 					frame.setScreen(currentScreen);
 					returnCode = 11;
 					break;
 				}
+				case ShopScreen.OPEN_COSMETICS_PREVIEW:
+					currentScreen = new HangarScreen(width, height, FPS, selectedShip, true);
+					frame.setScreen(currentScreen);
+					returnCode = 10;
+					break;
 				case 4:
 					currentScreen = new SettingsScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
@@ -549,6 +555,10 @@ public final class Core {
 			throw new IllegalStateException("Player assets have not been initialized.");
 		}
 		return shopController;
+	}
+
+	public static boolean ownsShipCosmetic(final ShipCosmetic cosmetic) {
+		return shopController != null && shopController.ownsCosmetic(cosmetic);
 	}
 
 	/**

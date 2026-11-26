@@ -4,7 +4,6 @@ import currency.PermanentUpgrade;
 import currency.PlayerAssets;
 import currency.PlayerAssetsState;
 import currency.PurchaseResult;
-import currency.ShopCatalog.Category;
 import engine.Core;
 import entity.ShipType;
 import java.nio.file.Files;
@@ -25,7 +24,7 @@ class AvailableShipsTest {
         ShopTestFixtures.SaveFile save = save();
         ShopController shop = ShopTestFixtures.upgradeController(assets, save);
         List<ShopProduct> ships = shop.getProducts().stream()
-                .filter(product -> product.getCategory() == Category.UNLOCKABLE).toList();
+                .filter(product -> product.getShipType() != null).toList();
 
         assertEquals(ShipType.values().length, ships.size());
         for (int index = 0; index < ships.size(); index++) {

@@ -22,6 +22,7 @@ import currency.PlayerAssetsState;
 import currency.ShopCatalog.Category;
 import shop.ShopController.SaveStatus;
 import shop.ShopProduct;
+import shop.ShipCosmetic;
 import records.Achievement;
 import records.RecordsService;
 import records.RunRecord;
@@ -309,12 +310,33 @@ public final class DrawManager {
             image = ChameleonHull.getBallSprite();
         }
 
+        boolean drawCosmetics = entity instanceof Ship && entity.getSpriteType() == SpriteType.Ship
+                && !((Ship) entity).isChameleonHullActive();
+        if (drawCosmetics && Core.ownsShipCosmetic(ShipCosmetic.USED_EXHAUST))
+            drawCosmeticIcon(ShipCosmetic.USED_EXHAUST, positionX + image.length,
+                    positionY + image[0].length * 2 - 1);
+
         backBufferGraphics.setColor(entity.getColor());
         for (int i = 0; i < image.length; i++)
             for (int j = 0; j < image[i].length; j++)
                 if (image[i][j])
                     backBufferGraphics.drawRect(positionX + i * 2, positionY
                             + j * 2, 1, 1);
+        if (drawCosmetics && Core.ownsShipCosmetic(ShipCosmetic.NOSE_DECAL))
+            drawCosmeticIcon(ShipCosmetic.NOSE_DECAL, positionX + image.length, positionY + 1);
+    }
+
+    private void drawCosmeticIcon(final ShipCosmetic cosmetic, final int x, final int y) {
+        if (cosmetic == ShipCosmetic.USED_EXHAUST) {
+            backBufferGraphics.setColor(Color.ORANGE);
+            backBufferGraphics.fillRect(x - 3, y, 6, 4);
+            backBufferGraphics.setColor(Color.YELLOW);
+            backBufferGraphics.fillRect(x - 1, y + 3, 2, 4);
+        } else {
+            backBufferGraphics.setColor(Color.MAGENTA);
+            backBufferGraphics.fillPolygon(new int[] { x, x + 3, x, x - 3 },
+                    new int[] { y, y + 3, y + 6, y + 3 }, 4);
+        }
     }
 
     /**
@@ -1060,8 +1082,21 @@ public final class DrawManager {
         drawShopText(badge, x + 7, y + 12, 9, Color.GRAY, size - 14);
         backBufferGraphics.setColor(selected ? Color.GREEN : Color.WHITE);
         drawShopProductIcon(product, x + size / 2, y + 18);
-        drawShopText(product.getName(), x + 9, y + 60, 11,
-                selected ? Color.GREEN : Color.WHITE, size - 18);
+        ShipCosmetic cosmetic = ShipCosmetic.fromProductId(product.getId());
+        if (cosmetic != null) {
+            Font labelFont = new Font(Font.SANS_SERIF, Font.PLAIN, 10);
+            String label = cosmetic.getLabel();
+            if (labelFont.canDisplayUpTo(label) >= 0) label = cosmetic.getFallback();
+            while (labelFont.getSize() > 8 && backBufferGraphics.getFontMetrics(labelFont)
+                    .stringWidth(label) > size - 18)
+                labelFont = labelFont.deriveFont((float) labelFont.getSize() - 1);
+            backBufferGraphics.setFont(labelFont);
+            backBufferGraphics.setColor(selected ? Color.GREEN : Color.WHITE);
+            drawShopLabel(label, x + 9, y + 60, size - 18);
+        } else {
+            drawShopText(product.getName(), x + 9, y + 60, 11,
+                    selected ? Color.GREEN : Color.WHITE, size - 18);
+        }
         drawShopDescription(product.getDescription(), x + 9, y + 75, size - 18);
         backBufferGraphics.setColor(Color.DARK_GRAY);
         backBufferGraphics.drawLine(x + 9, y + size - 25, x + size - 9, y + size - 25);
@@ -1070,6 +1105,11 @@ public final class DrawManager {
     }
 
     private void drawShopProductIcon(ShopProduct product, int centerX, int y) {
+        ShipCosmetic cosmetic = ShipCosmetic.fromProductId(product.getId());
+        if (cosmetic != null) {
+            drawCosmeticIcon(cosmetic, centerX, y + 11);
+            return;
+        }
         if (product.getShipType() != null) {
             boolean[][] sprite = ShipSprites.forType(product.getShipType());
             backBufferGraphics.setColor(Color.WHITE);
@@ -1093,6 +1133,19 @@ public final class DrawManager {
         case RELOADER -> Icon.UPGRADE_RELOADER;
         };
         drawIcon(icon, centerX - icon.getWidth(), y, 2);
+    }
+
+    public void drawCosmeticPurchasePraise(final Screen screen, final int y) {
+        String line = "您真有眼光，本店也是这么骗自己的。";
+        Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
+        backBufferGraphics.setColor(Color.GREEN);
+        if (font.canDisplayUpTo(line) >= 0) {
+            drawShopCentered(screen, "Fine taste, pilot. We tell ourselves the same thing.", y);
+            return;
+        }
+        backBufferGraphics.setFont(font);
+        int width = backBufferGraphics.getFontMetrics().stringWidth(line);
+        backBufferGraphics.drawString(line, (screen.getWidth() - width) / 2, y);
     }
 
     /** Neutral placeholders until content owners supply agreed product artwork. */

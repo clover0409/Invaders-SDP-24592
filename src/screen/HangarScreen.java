@@ -6,6 +6,7 @@ import audio.AudioManager;
 import engine.Core;
 import engine.Cooldown;
 import entity.Ship;
+import entity.ShipType;
 
 /** Lets the player customize the ship's color. */
 public class HangarScreen extends Screen {
@@ -14,14 +15,21 @@ public class HangarScreen extends Screen {
 
     private final Cooldown selectionCooldown;
     private final Ship previewShip;
+    private final boolean fromShop;
 
     public HangarScreen(final int width, final int height, final int fps) {
+        this(width, height, fps, ShipType.STANDARD, false);
+    }
+
+    public HangarScreen(final int width, final int height, final int fps,
+            final ShipType shipType, final boolean fromShop) {
         super(width, height, fps);
+        this.fromShop = fromShop;
 
         this.returnCode = 1;
         this.selectionCooldown = Core.getCooldown(SELECTION_TIME);
         this.selectionCooldown.reset();
-        this.previewShip = new Ship(width / 2 - 13, height / 2 - 8);
+        this.previewShip = new Ship(width / 2 - 13, height / 2 - 8, shipType);
     }
 
     @Override
@@ -70,11 +78,13 @@ public class HangarScreen extends Screen {
         this.drawManager.drawCenteredRegularString(this,
                 "Color: " + ShipCustomization.getColorName(),
                 this.getHeight() / 2 + 45);
+        if (this.fromShop)
+            this.drawManager.drawCosmeticPurchasePraise(this, this.getHeight() / 2 + 83);
         this.drawManager.drawCenteredRegularString(this,
                 "Left/Right: change color",
                 this.getHeight() - 60);
         this.drawManager.drawCenteredRegularString(this,
-                "Esc: return to menu",
+                this.fromShop ? "Esc: return to Shop" : "Esc: return to menu",
                 this.getHeight() - 35);
 
         this.drawManager.completeDrawing(this);

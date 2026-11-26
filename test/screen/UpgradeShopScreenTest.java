@@ -84,7 +84,8 @@ class UpgradeShopScreenTest {
         assertEquals(50, assets.getBalance());
         tap(KeyEvent.VK_ENTER);
         assertEquals(50, assets.getBalance());
-        assertEquals(6, controller.getProducts().size());
+        assertEquals(PermanentUpgrade.values().length, controller.getProducts().stream()
+                .filter(product -> PermanentUpgrade.forProduct(product.getId()) != null).count());
     }
 
     @Test
@@ -106,7 +107,8 @@ class UpgradeShopScreenTest {
         tap(KeyEvent.VK_DOWN);
         for (int ship = 0; ship < entity.ShipType.values().length; ship++) {
             tap(KeyEvent.VK_ENTER);
-            tap(KeyEvent.VK_RIGHT);
+            if (ship + 1 < entity.ShipType.values().length)
+                tap(KeyEvent.VK_RIGHT);
         }
         assertEquals(800, assets.getBalance());
         assertEquals(java.util.Collections.singleton("ship.speedster"),

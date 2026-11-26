@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import shop.ShopController;
+import shop.ShopProducts;
+import shop.ShipCosmetic;
 import shop.ShopTestFixtures;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -344,5 +346,32 @@ class ShopScreenTest {
         assertTrue(assets.isUnlocked("TEST_BGM"));
         assertEquals(750, assets.getBalance());
         assertEquals(1, state("selectedSection"));
+    }
+
+    @Test
+    void purchasingCosmeticsOpensPreviewAndPersistsBothWithoutDoubleCharging() throws Exception {
+        var cosmeticProducts = ShopProducts.availableProducts().stream()
+                .filter(product -> ShipCosmetic.fromProductId(product.getId()) != null).toList();
+        assertEquals(2, cosmeticProducts.size());
+        controller = ShopTestFixtures.controller(assets, saveFile, cosmeticProducts);
+        screen = new ShopScreen(448, 520, 60, controller);
+        screen.initialize();
+        tap(KeyEvent.VK_SPACE);
+        assertEquals(ShopScreen.OPEN_COSMETICS_PREVIEW, screen.returnCode);
+        assertTrue(controller.ownsCosmetic(ShipCosmetic.USED_EXHAUST));
+        assertEquals(PurchaseResult.ALREADY_UNLOCKED, controller.purchase(ShipCosmetic.USED_EXHAUST.getId()));
+        assertEquals(970, assets.getBalance());
+
+        screen = new ShopScreen(448, 520, 60, controller);
+        screen.initialize();
+        tap(KeyEvent.VK_RIGHT);
+        tap(KeyEvent.VK_SPACE);
+        assertEquals(ShopScreen.OPEN_COSMETICS_PREVIEW, screen.returnCode);
+        assertEquals(950, saveFile.load().getBalance());
+        PlayerAssets restored = new PlayerAssets();
+        assertTrue(restored.restore(saveFile.load()));
+        ShopController reopened = ShopTestFixtures.controller(restored, saveFile, cosmeticProducts);
+        assertTrue(reopened.ownsCosmetic(ShipCosmetic.USED_EXHAUST));
+        assertTrue(reopened.ownsCosmetic(ShipCosmetic.NOSE_DECAL));
     }
 }
