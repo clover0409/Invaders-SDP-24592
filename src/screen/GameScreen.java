@@ -1272,6 +1272,11 @@ public class GameScreen extends Screen {
 		return true;
 	}
 
+	/** The campaign's lethal damage paths are enemy and boss projectiles. */
+	public AccidentReport getAccidentReport() {
+		return this.playerStatus.getLives() == 0 ? AccidentReport.ENEMY_PROJECTILE : null;
+	}
+
 	/**
      * Checks if two entities are colliding.
      *

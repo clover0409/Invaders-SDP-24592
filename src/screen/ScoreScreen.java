@@ -48,6 +48,7 @@ public class ScoreScreen extends Screen {
     private String modeLabel;
     /** Comparison with the player's best completed run before this result. */
     private final String personalBestLabel;
+    private final AccidentReport accidentReport;
 	/** Current score. */
 	private int score;
 	/** Player lives left. */
@@ -97,6 +98,12 @@ public class ScoreScreen extends Screen {
     public ScoreScreen(final int width, final int height, final int fps,
             final GameState gameState, final boolean infiniteMode, final List<Achievement> unlocks,
             final Optional<PersonalBestComparison> comparison) {
+        this(width, height, fps, gameState, infiniteMode, unlocks, comparison, null);
+    }
+
+    public ScoreScreen(final int width, final int height, final int fps,
+            final GameState gameState, final boolean infiniteMode, final List<Achievement> unlocks,
+            final Optional<PersonalBestComparison> comparison, final AccidentReport accidentReport) {
         super(width,height,fps);
         this.runUnlocks = new ArrayList<Achievement>(unlocks);
         this.personalBestLabel = comparison.map(ScoreScreen::formatPersonalBest).orElse(null);
@@ -110,6 +117,7 @@ public class ScoreScreen extends Screen {
                 && gameState.getLevel() > CampaignStageData.getTotalStages();
 		this.score = gameState.getScore();
 		this.livesRemaining = gameState.getLivesRemaining();
+        this.accidentReport = this.livesRemaining == 0 ? accidentReport : null;
 		this.bulletsShot = gameState.getBulletsShot();
 		this.shipsDestroyed = gameState.getShipsDestroyed();
 		this.isNewRecord = false;
@@ -274,7 +282,7 @@ public class ScoreScreen extends Screen {
                     this.shipsDestroyed,accuracy,this.isNewRecord,this.name,this.nameCharSelected,
                     this.runUnlocks,this.inputDelay.checkFinished(),
                     this.stageFailed && !this.infiniteMode ? this.level : 0, this.gameCleared,
-                    this.modeLabel, this.personalBestLabel);
+                    this.modeLabel, this.personalBestLabel, this.accidentReport);
             drawManager.completeDrawing(this); return;
         }
 
@@ -285,6 +293,7 @@ public class ScoreScreen extends Screen {
         drawManager.drawResults(this, this.score, this.livesRemaining,
                 this.shipsDestroyed, accuracy, this.isNewRecord, this.personalBestLabel);
         drawManager.drawModeLabel(this, this.modeLabel, this.isNewRecord);
+        drawManager.drawStandardAccidentReport(this, this.accidentReport, this.isNewRecord);
 
 		if (this.isNewRecord)
 			drawManager.drawNameInput(this, this.name, this.nameCharSelected);

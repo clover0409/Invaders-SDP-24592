@@ -239,7 +239,8 @@ public final class Core {
 							+ gameState.getBulletsShot() + " bullets shot and "
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							false, recordsService.getCurrentRunUnlocks(), campaignComparison);
+							false, recordsService.getCurrentRunUnlocks(), campaignComparison,
+							((GameScreen) currentScreen).getAccidentReport());
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;
@@ -312,7 +313,8 @@ public final class Core {
 					}
 					currentScreen = new SurvivalResultScreen(width, height, FPS,
 							challenge.getGameState().getScore(),
-							challenge.getSurvivalElapsedMillis(), challenge.hasSurvived());
+							challenge.getSurvivalElapsedMillis(), challenge.hasSurvived(),
+							challenge.getAccidentReport());
 					returnCode = frame.setScreen(currentScreen);
 					break;
 				}
@@ -344,7 +346,8 @@ public final class Core {
 							+ gameState.getShipsDestroyed() + " ships destroyed.");
 					// Infinite mode score screen, Space plays infinite mode again.
 					currentScreen = new ScoreScreen(width, height, FPS, gameState,
-							true, recordsService.getCurrentRunUnlocks(), infiniteComparison);
+							true, recordsService.getCurrentRunUnlocks(), infiniteComparison,
+							((InfiniteGameScreen) currentScreen).getAccidentReport());
 					returnCode = frame.setScreen(currentScreen);
 					LOGGER.info("Closing score screen.");
 					break;

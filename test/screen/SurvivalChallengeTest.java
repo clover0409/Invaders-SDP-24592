@@ -45,6 +45,7 @@ class SurvivalChallengeTest {
         challenge.update();
         assertTrue(challenge.hasSurvived());
         assertFalse(challenge.isRunning);
+        assertNull(challenge.getAccidentReport());
         assertEquals(60_000, challenge.getSurvivalElapsedMillis());
         assertEquals(1, challenge.getGameState().getLivesRemaining());
     }
@@ -81,8 +82,22 @@ class SurvivalChallengeTest {
         challenge.update();
 
         assertEquals(0, challenge.getGameState().getLivesRemaining());
+        assertEquals(AccidentReport.ENEMY_PROJECTILE, challenge.getAccidentReport());
         assertEquals(60_000, challenge.getSurvivalElapsedMillis());
         assertFalse(challenge.hasSurvived(), "A fatal collision in the final frame takes precedence");
+    }
+
+    @Test
+    void aShipCollisionProducesTheRightOfWayReport() throws Exception {
+        InfiniteGameScreen challenge = newChallenge();
+        startGameplay(challenge);
+        Ship player = ship(challenge);
+        enemies(challenge).add(new ZigzagEnemyShip(player.getPositionX(),
+                player.getPositionY(), SpriteType.EnemyShipA1, 1));
+        challenge.update();
+        assertEquals(0, challenge.getGameState().getLivesRemaining());
+        assertEquals(AccidentReport.ENEMY_COLLISION, challenge.getAccidentReport());
+        assertEquals("双方对路权存在分歧", challenge.getAccidentReport().getMessage());
     }
 
     @Test
@@ -106,6 +121,7 @@ class SurvivalChallengeTest {
         press(challenge, KeyEvent.VK_ESCAPE);
         assertTrue(challenge.isAbandoned());
         assertFalse(challenge.isRunning);
+        assertNull(challenge.getAccidentReport());
 
         SurvivalResultScreen result = new SurvivalResultScreen(448, 520, 60, 0, 0, false);
         result.inputDelay = Core.getCooldown(0);
@@ -200,11 +216,15 @@ class SurvivalChallengeTest {
         return (List<ZigzagEnemyShip>) field.get(challenge);
     }
 
-    @SuppressWarnings("unchecked")
-    private static void queueHit(final InfiniteGameScreen challenge) throws ReflectiveOperationException {
+    private static Ship ship(final InfiniteGameScreen challenge) throws ReflectiveOperationException {
         Field shipField = InfiniteGameScreen.class.getDeclaredField("ship");
         shipField.setAccessible(true);
-        Ship ship = (Ship) shipField.get(challenge);
+        return (Ship) shipField.get(challenge);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void queueHit(final InfiniteGameScreen challenge) throws ReflectiveOperationException {
+        Ship ship = ship(challenge);
         Field bulletsField = InfiniteGameScreen.class.getDeclaredField("enemyBullets");
         bulletsField.setAccessible(true);
         Set<Bullet> bullets = (Set<Bullet>) bulletsField.get(challenge);

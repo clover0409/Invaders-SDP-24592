@@ -75,6 +75,7 @@ public class InfiniteGameScreen extends Screen {
 	private int bulletsShot;
 	private int shipsDestroyed;
 	private boolean gameOver;
+	private AccidentReport accidentReport;
 	private RunSession runSession;
 	private boolean abandoned;
 	private RecordsService recordsService;
@@ -471,6 +472,8 @@ public class InfiniteGameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.lives--;
+				if (this.lives == 0)
+					this.accidentReport = AccidentReport.ENEMY_PROJECTILE;
 				if (this.lives == 1) {
 					AudioManager.playBGM("audio/bgm/music_game_urgent.wav");
 				}
@@ -498,6 +501,8 @@ public class InfiniteGameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.lives--;
+				if (this.lives == 0)
+					this.accidentReport = AccidentReport.ENEMY_COLLISION;
 				if (this.lives == 1) {
 					AudioManager.playBGM("audio/bgm/music_game_urgent.wav");
 				}
@@ -524,6 +529,10 @@ public class InfiniteGameScreen extends Screen {
 	}
 
 	public boolean isAbandoned() { return this.abandoned; }
+
+	public AccidentReport getAccidentReport() {
+		return this.accidentReport;
+	}
 
 	public final GameState getGameState() {
 		return new GameState(1, this.score, this.lives, this.bulletsShot,

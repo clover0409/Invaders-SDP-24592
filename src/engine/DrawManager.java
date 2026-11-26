@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import screen.Screen;
+import screen.AccidentReport;
 import hud.FloatingScoreHud;
 import currency.PermanentUpgrade;
 import currency.PlayerAssetsState;
@@ -851,6 +852,27 @@ public final class DrawManager {
         backBufferGraphics.setColor(Color.WHITE);
         drawCenteredRegularString(screen, modeLabel, screen.getHeight()
                 / height + fontRegularMetrics.getHeight() * 8);
+    }
+
+    public void drawStandardAccidentReport(final Screen screen,
+            final AccidentReport report, final boolean isNewRecord) {
+        int modeY = screen.getHeight() / (isNewRecord ? 4 : 2) + fontRegularMetrics.getHeight() * 8;
+        drawAccidentReport(screen, report, modeY + fontRegularMetrics.getHeight());
+    }
+
+    public void drawAccidentReport(final Screen screen, final AccidentReport report, final int y) {
+        if (report == null)
+            return;
+        String message = report.getMessage();
+        Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
+        if (font.canDisplayUpTo(message) >= 0) {
+            font = fontRegular.deriveFont(11f);
+            message = report.getFallback();
+        }
+        backBufferGraphics.setFont(font);
+        backBufferGraphics.setColor(Color.YELLOW);
+        int textWidth = backBufferGraphics.getFontMetrics().stringWidth(message);
+        backBufferGraphics.drawString(message, (screen.getWidth() - textWidth) / 2, y);
     }
 
     /**
@@ -1698,8 +1720,19 @@ public final class DrawManager {
             final List<Achievement> achievements, final boolean acceptsInput,
             final int failedStage, final boolean gameCleared, final String modeLabel,
             final String personalBestLabel) {
+        drawAchievementResults(screen, score, lives, enemies, accuracy, isNewRecord, name, selected,
+                achievements, acceptsInput, failedStage, gameCleared, modeLabel, personalBestLabel, null);
+    }
+
+    public void drawAchievementResults(final Screen screen, final int score,
+            final int lives, final int enemies, final float accuracy,
+            final boolean isNewRecord, final char[] name, final int selected,
+            final List<Achievement> achievements, final boolean acceptsInput,
+            final int failedStage, final boolean gameCleared, final String modeLabel,
+            final String personalBestLabel, final AccidentReport report) {
         int spacing = fontRegularMetrics.getHeight();
-        int resultRows = 4 + (modeLabel == null ? 0 : 1) + (personalBestLabel == null ? 0 : 1);
+        int resultRows = 4 + (modeLabel == null ? 0 : 1) + (personalBestLabel == null ? 0 : 1)
+                + (report == null ? 0 : 1);
         int y = getAchievementResultsTitleY(screen, isNewRecord, failedStage,
                 achievements.size(), resultRows);
         backBufferGraphics.setColor(Color.GREEN);
@@ -1726,6 +1759,10 @@ public final class DrawManager {
         }
         if (modeLabel != null) {
             drawCenteredRegularString(screen, modeLabel, y);
+            y += spacing;
+        }
+        if (report != null) {
+            drawAccidentReport(screen, report, y);
             y += spacing;
         }
         if (isNewRecord) {

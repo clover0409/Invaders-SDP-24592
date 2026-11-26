@@ -9,15 +9,23 @@ public final class SurvivalResultScreen extends Screen {
     private final int score;
     private final long survivedMillis;
     private final boolean survived;
+    private final AccidentReport accidentReport;
     private boolean spaceWasDown;
     private boolean escapeWasDown;
 
     public SurvivalResultScreen(final int width, final int height, final int fps,
             final int score, final long survivedMillis, final boolean survived) {
+        this(width, height, fps, score, survivedMillis, survived, null);
+    }
+
+    public SurvivalResultScreen(final int width, final int height, final int fps,
+            final int score, final long survivedMillis, final boolean survived,
+            final AccidentReport accidentReport) {
         super(width, height, fps);
         this.score = score;
         this.survivedMillis = survivedMillis;
         this.survived = survived;
+        this.accidentReport = survived ? null : accidentReport;
         this.spaceWasDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);
         this.escapeWasDown = inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
         AudioManager.playBGM(survived
@@ -37,6 +45,7 @@ public final class SurvivalResultScreen extends Screen {
         drawManager.initDrawing(this);
         drawManager.drawSurvivalResult(this, this.score, this.survivedMillis,
                 this.survived, acceptsInput);
+        drawManager.drawAccidentReport(this, this.accidentReport, this.height * 3 / 4);
         drawManager.completeDrawing(this);
 
         boolean spaceDown = inputManager.isKeyDown(KeyEvent.VK_SPACE);
