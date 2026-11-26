@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,15 +16,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 import engine.Core;
+import engine.DrawManager.SpriteType;
 import entity.Bullet;
 import entity.BulletPool;
 import entity.Ship;
+import entity.ZigzagEnemyShip;
 
 class SurvivalChallengeTest {
     private final AtomicLong clock = new AtomicLong();
 
     @Test
-    void startsAfterCountdownAndClearsAtSixtySeconds() throws Exception {
+    void startsAfterCountdownAndClearsAtSixtySeconds() {
         InfiniteGameScreen challenge = newChallenge();
         advance(10_000);
         challenge.update();
@@ -38,14 +41,48 @@ class SurvivalChallengeTest {
         assertTrue(challenge.isRunning);
         assertEquals(59_999, challenge.getSurvivalElapsedMillis());
 
-        queueHit(challenge);
         advance(1);
         challenge.update();
         assertTrue(challenge.hasSurvived());
         assertFalse(challenge.isRunning);
         assertEquals(60_000, challenge.getSurvivalElapsedMillis());
-        assertEquals(1, challenge.getGameState().getLivesRemaining(),
-                "A collision after the deadline must not cancel a clear");
+        assertEquals(1, challenge.getGameState().getLivesRemaining());
+    }
+
+    @Test
+    void crossingDeadlineAfterAStallStillUpdatesEnemiesBeforeClearing() throws Exception {
+        InfiniteGameScreen challenge = newChallenge();
+        startGameplay(challenge);
+        advance(59_000);
+        challenge.update();
+        ZigzagEnemyShip enemy = new ZigzagEnemyShip(100, 60, SpriteType.EnemyShipA1, 2);
+        enemies(challenge).add(enemy);
+        int priorY = enemy.getPositionY();
+
+        // No game updates for two seconds across the deadline.
+        advance(2_000);
+        challenge.update();
+
+        assertTrue(enemy.getPositionY() > priorY, "The resumed frame must update enemies");
+        assertEquals(60_000, challenge.getSurvivalElapsedMillis());
+        assertTrue(challenge.hasSurvived());
+        assertFalse(challenge.isRunning);
+    }
+
+    @Test
+    void crossingDeadlineAfterAStallStillDetectsAFatalCollision() throws Exception {
+        InfiniteGameScreen challenge = newChallenge();
+        startGameplay(challenge);
+        advance(59_000);
+        challenge.update();
+        queueHit(challenge);
+
+        advance(2_000);
+        challenge.update();
+
+        assertEquals(0, challenge.getGameState().getLivesRemaining());
+        assertEquals(60_000, challenge.getSurvivalElapsedMillis());
+        assertFalse(challenge.hasSurvived(), "A fatal collision in the final frame takes precedence");
     }
 
     @Test
@@ -85,6 +122,32 @@ class SurvivalChallengeTest {
     }
 
     @Test
+    void heldEscapeDoesNotBackOutOfTheModeMenu() {
+        InfiniteGameScreen challenge = newChallenge();
+        GameModeScreen menu;
+        key(challenge, KeyEvent.VK_ESCAPE, true);
+        try {
+            challenge.update();
+            assertTrue(challenge.isAbandoned());
+            menu = new GameModeScreen(448, 520, 60);
+            menu.isRunning = true;
+            menu.inputDelay = Core.getCooldown(Integer.MAX_VALUE);
+            menu.inputDelay.reset();
+            menu.update();
+            menu.inputDelay = Core.getCooldown(0);
+            menu.update();
+            assertTrue(menu.isRunning, "The exit press is still held after the input delay");
+        } finally {
+            key(challenge, KeyEvent.VK_ESCAPE, false);
+        }
+        menu.update();
+        assertTrue(menu.isRunning, "Releasing Escape must not navigate");
+        press(menu, KeyEvent.VK_ESCAPE);
+        assertFalse(menu.isRunning);
+        assertEquals(1, menu.returnCode);
+    }
+
+    @Test
     void spawnIntervalShrinksDuringTheRun() {
         int initial = InfiniteGameScreen.survivalSpawnInterval(0);
         int middle = InfiniteGameScreen.survivalSpawnInterval(30_000);
@@ -111,15 +174,30 @@ class SurvivalChallengeTest {
     }
 
     private static void press(final Screen screen, final int key) {
-        Canvas source = new Canvas();
-        screen.inputManager.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
-                0, 0, key, KeyEvent.CHAR_UNDEFINED));
+        key(screen, key, true);
         try {
             screen.update();
         } finally {
-            screen.inputManager.keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
-                    0, 0, key, KeyEvent.CHAR_UNDEFINED));
+            key(screen, key, false);
         }
+    }
+
+    private static void key(final Screen screen, final int key, final boolean pressed) {
+        KeyEvent event = new KeyEvent(new Canvas(),
+                pressed ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
+                0, 0, key, KeyEvent.CHAR_UNDEFINED);
+        if (pressed)
+            screen.inputManager.keyPressed(event);
+        else
+            screen.inputManager.keyReleased(event);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<ZigzagEnemyShip> enemies(final InfiniteGameScreen challenge)
+            throws ReflectiveOperationException {
+        Field field = InfiniteGameScreen.class.getDeclaredField("enemies");
+        field.setAccessible(true);
+        return (List<ZigzagEnemyShip>) field.get(challenge);
     }
 
     @SuppressWarnings("unchecked")
